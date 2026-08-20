@@ -11,19 +11,26 @@ for what the plugin actually contains.
 
 ## Install
 
-**In Claude Code (CLI):**
+Since this repo is private, whoever installs it needs read access to it on
+GitHub — you'll be prompted to authenticate either way.
+
+### Claude Code (terminal)
 
 ```
 /plugin marketplace add thespamer/fsi-cloud-architect
 /plugin install fsi-cloud-architect@fsi-cloud-architect
 ```
 
-**In Cowork:** open **Customize → Plugins → Add marketplace**, enter
-`thespamer/fsi-cloud-architect`, then find `fsi-cloud-architect` under
-**Browse plugins** and click **Install**.
+Run both lines inside a Claude Code session in your terminal. `/plugin` is a
+CLI command — it does not work typed into a Cowork or claude.ai chat.
 
-Since this repo is private, whoever installs it needs read access to it on
-GitHub — you'll be prompted to authenticate when adding the marketplace.
+### Claude Desktop (Cowork)
+
+1. Open the sidebar and go to **Customize → Plugins**
+2. Click **Add marketplace**
+3. Enter `thespamer/fsi-cloud-architect` (the `owner/repo` shorthand works)
+4. Authenticate with GitHub if prompted
+5. Click **Browse plugins**, find `fsi-cloud-architect`, click **Install**
 
 Once installed, the skill is invoked automatically when a prompt matches its
 domain, or explicitly via `/fsi-hybrid-cloud`. The agent can be invoked
