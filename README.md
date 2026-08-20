@@ -12,12 +12,12 @@ for what the plugin actually contains.
 ## Install
 
 ```
-/plugin marketplace add <owner>/fsi-cloud-architect
+/plugin marketplace add thespamer/fsi-cloud-architect
 /plugin install fsi-cloud-architect@fsi-cloud-architect
 ```
 
-Replace `<owner>` with this repository's GitHub owner/org. Since this repo is
-private, whoever runs the install needs read access to it.
+Since this repo is private, whoever runs the install needs read access to it
+on GitHub.
 
 Once installed, the skill is invoked automatically when a prompt matches its
 domain, or explicitly via `/fsi-hybrid-cloud`. The agent can be invoked
