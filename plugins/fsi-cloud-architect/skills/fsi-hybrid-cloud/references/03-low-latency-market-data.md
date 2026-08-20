@@ -1,0 +1,338 @@
+# Low-Latency and Market Data Architecture
+
+Latency budgets, instance and OS tuning, multicast in a world without multicast,
+time synchronisation, and the placement decisions that actually determine
+performance.
+
+All figures sourced in `references/07-verified-facts.md`.
+
+---
+
+## 1. The Latency Hierarchy — Optimise Top Down
+
+AWS's own analysis frames the orders of magnitude available at each layer. Use it
+to stop teams from tuning NIC interrupts when the workload is in the wrong metro.
+
+| Layer | Order of magnitude available |
+| --- | --- |
+| Region and placement choice | ~100 ms |
+| Network path | ~2 ms |
+| Instance selection | ~200 µs |
+| OS tuning and kernel bypass | ~50 µs |
+| Application tuning | ~5 µs |
+
+**Corollary:** a workload in the wrong region cannot be rescued by tuning. Fix
+placement first, path second, instance third. Only then reach for kernel bypass.
+
+---
+
+## 2. What Latency Is Actually Achievable
+
+**Cloud-resident market data applications**, end to end, should be planned around
+**10–50 ms** — FactSet's own published position. That is entirely adequate for
+distribution, analytics, research and client-facing APIs, and unsuitable for
+execution.
+
+**Instance-to-instance round trip inside a cloud**, well tuned:
+
+| Platform | p50 RTT | p99 / p99.9 RTT |
+| --- | --- | --- |
+| AWS `m8azn.metal` | 17.7 µs | 19.4 µs (p99.9) |
+| AWS `m5zn.metal` | 20.3 µs | 22.2 µs (p99.9) |
+| AWS `c7i.24xl` metal | 20.3 µs | 22.0 µs (p99.9) |
+| AWS `c8g` (Graviton) | 21.4 µs | 23.4 µs (p99.9) |
+| GCP `C4` | 15 µs | 22 µs (p99) |
+
+GCP C4 represents roughly a **40% reduction in median RTT versus C3**, and holds
+consistent across 48/96/192 vCPU shapes and 1×–100× market replay speeds, with
+in-process latency under 1.5 µs.
+
+**Bare metal wins on the tail.** Metal instances show a p99.9 advantage of
+**3.3–10.9 µs (15–29%)** over full-slot virtualised equivalents. For anything
+where tail latency is the SLA, that is the whole argument.
+
+**Where cloud does not reach.** Sub-10 µs wire-to-wire, deterministic jitter
+floors, and FPGA-in-path designs remain colocation territory. Do not promise
+otherwise.
+
+---
+
+## 3. Placement
+
+### AWS
+
+- **Cluster placement group** with VPC peering is the lowest-latency arrangement;
+  instances are physically co-located.
+- **Choose the largest size in the family** to get exclusive access to the
+  underlying host — this removes noisy-neighbour jitter.
+- **"EC2 hunting"** is a real technique: launch more instances than needed,
+  measure pairwise latency, keep the best-placed ones, terminate the rest. Budget
+  for it in latency-critical deployments.
+- **Precision Time Placement Group (PTPG)** is a distinct placement strategy for
+  launching instances with the PTP hardware clock enabled — see §6.
+
+### GCP
+
+- **Compact placement policy** places instances close together within a zone,
+  with a configurable maximum-distance value; lower values give tighter placement
+  but reduce available capacity. Placement is **best-effort**.
+- **Spread placement policy** is the opposite tool — use for replicated stateful
+  systems (Cassandra, Kafka, HDFS), not for latency.
+- For some newer accelerator shapes, **workload policies** supersede placement
+  policies; check the machine family before designing.
+
+**Both clouds:** placement is best-effort. Verify actual placement by measurement
+after launch, and re-verify after any scaling event or instance replacement.
+
+---
+
+## 4. Network and OS Tuning
+
+### Interface and driver
+
+| Setting | AWS | GCP |
+| --- | --- | --- |
+| High-performance NIC | ENA (Elastic Network Adapter) | **gVNIC** required for high bandwidth |
+| Extra bandwidth tier | Instance-family dependent | **Tier_1 networking** per-VM configuration |
+| Kernel bypass | **DPDK** or **XDP zero-copy** | DPDK, hardware offload |
+| Jumbo frames | Within VPC; mind the DX/TGW ceilings | Within VPC; mind the attachment MTU |
+
+**ENA Express / SRD is not recommended for HFT-style workloads.** It can modestly
+inflate p50 baseline latency. It is a throughput-and-tail-recovery feature for
+bulk flows, not a latency feature for small messages. Use DPDK or XDP zero-copy
+instead when microseconds matter.
+
+### OS
+
+- **Linux kernel 6.1 or newer.** Measured p50 improvements of **28–36%** on `c7i`
+  and `m5zn` from OS tuning alone; gains are much smaller on the newest platforms
+  (~1% on `m8azn`), which arrive better tuned.
+- **CPU pinning and core isolation** (`isolcpus`, `nohz_full`, `rcu_nocbs`) for
+  the hot path.
+- **NUMA / vNUMA alignment** — keep the NIC, the polling thread and the memory on
+  the same node. Misalignment costs more than most application tuning gains.
+- **P-state and C-state tuning** — disable deep C-states, pin to performance
+  governor. Frequency transitions are a jitter source.
+- **Busy polling** (`SO_BUSY_POLL`, `napi_busy_poll`) instead of interrupt-driven
+  receive on the hot path.
+- **Ring buffer sizing** — larger rings absorb microbursts, at the cost of
+  latency under load. Tune against the actual burst profile.
+- **IRQ affinity** — steer NIC interrupts away from isolated cores.
+
+### CPU architecture
+
+Graviton/ARM is a serious option for feed workloads. FactSet's own benchmarking
+found a `c7g.large` used **just over half the CPU of a `c5n`** at **identical
+latency**, and observed **no latency increase** across the instance families
+tested. Efficiency gains at equal latency translate directly into fewer
+instances and lower licensing.
+
+**Measurement caveat from the same work:** CloudWatch CPU metrics include
+hypervisor system time that guest-side tools like `sar` do not capture.
+Multi-vCPU instances pay additional hypervisor overhead and context-switching
+cost that single-vCPU instances avoid, so **performance does not scale linearly
+with vCPU count**. Benchmark the actual shape; do not extrapolate.
+
+### Storage
+
+- **Instance store** — sub-millisecond, ephemeral. Right for hot tick buffers and
+  scratch.
+- **io2 Block Express** (AWS) / **Hyperdisk Extreme** (GCP) — durable with
+  competitive latency for the archive and journal tiers.
+- Never put a latency-critical write path on network storage without measuring
+  its p99.9.
+
+---
+
+## 5. Multicast: The Central Market Data Problem
+
+**Neither AWS VPC nor Google Cloud VPC forwards native multicast.** Every exchange
+feed that arrives as multicast needs a conversion strategy.
+
+### Option A — AWS Transit Gateway multicast domain
+
+Capabilities:
+- **IGMPv2** dynamic membership (IPv4 only), or **static** source/member
+  configuration via API (IPv4 and IPv6)
+- **Nitro instances** can be senders and receivers; **non-Nitro can only receive**
+- Multicast domains segment at the **subnet** level — one domain per subnet
+
+Hard constraints that shape the design:
+- **Not supported over Direct Connect, Site-to-Site VPN, peering attachments, or
+  TGW Connect attachments.** This is the constraint that catches most designs:
+  you cannot simply extend an on-prem multicast feed into TGW multicast over DX.
+- **No fragmentation** — fragmented packets are dropped
+- IGMP query interval 2 minutes; 3 consecutive failed queries removes a member;
+  7-minute post-outage traffic window; 12-hour query retention
+- Consult the Transit Gateway multicast quotas page for domain/group/member/source
+  limits before sizing
+
+### Option B — Overlay router bridging on-prem multicast into TGW
+
+The pattern AWS documents for CME MDP:
+
+1. Virtual router on-prem and a peer virtual router in a transit VPC
+2. **GRE tunnel** between them, with **PIM** neighbour relationships
+3. The cloud-side virtual router joins the TGW multicast domain
+4. Because **TGW does not transparently pass IGMP join messages**, configure
+   **static IGMP joins** on the cloud-side router (`ip igmp static-group <group>`)
+5. Create the multicast domain with **static sources support enabled** and IGMPv2
+   disabled
+6. **Disable source/destination checks** on every router interface carrying
+   transit traffic
+
+Operational reality: adding a receiver means a manual configuration change. This
+design needs 300-level multicast, GRE, PIM and OSPF competence on the team, and
+production deployments require coordination with the venue's data centre. AWS has
+a Direct Connect location inside the CyrusOne Aurora, Illinois facility for CME.
+
+### Option C — Unicast fan-out tier
+
+Terminate multicast at the edge (colo or a small on-prem footprint), normalise,
+and fan out over unicast TCP/UDP or a messaging fabric. Costs one extra hop;
+removes all multicast complexity from the cloud estate; scales with the fan-out
+tier rather than with network features.
+
+**This is usually the right answer for a data vendor.** It also gives a natural
+place to enforce entitlements.
+
+### Option D — Commercial messaging fabric
+
+Solace, Aeron, Chronicle, Confluent/Kafka, or a vendor's own transport. Buys
+managed multicast-like semantics, back-pressure and replay across clouds. Costs
+licence plus a latency floor set by the product.
+
+### GCP note
+
+Google Cloud VPC has **no multicast at all** — there is no TGW-multicast
+equivalent. On GCP the practical options are Option C or Option D. Design
+accordingly; do not assume symmetry with AWS.
+
+---
+
+## 6. Time Synchronisation
+
+Regulatory, not optional.
+
+### MiFID II RTS 25 requirements
+
+**Trading venue operators:**
+
+| Gateway-to-gateway latency | Max divergence from UTC | Timestamp granularity |
+| --- | --- | --- |
+| > 1 ms | 1 ms | 1 ms or better |
+| < 1 ms | **100 µs** | **1 µs or better** |
+
+**Members and participants:**
+
+| Activity | Max divergence from UTC | Granularity |
+| --- | --- | --- |
+| High-frequency algorithmic trading | **100 µs** | 1 µs or better |
+| Any other trading activity | 1 ms | 1 ms or better |
+| Voice, RFQ with human intervention, negotiated transactions | 1 s | 1 s or better |
+
+Clocks must be traceable to UTC as issued by the timing centres in the BIPM
+Annual Report on Time Activities.
+
+### What the clouds provide
+
+| Mechanism | Typical error bound |
+| --- | --- |
+| NTP (Amazon Time Sync / GCP metadata NTP) | under ~100 µs |
+| **PTP** (Amazon Time Sync PTP hardware clock) | under ~40 µs |
+| **Amazon Time Sync nanosecond hardware packet timestamps** | nanosecond-precision timestamps for the most demanding cases |
+
+AWS ships a **Precision Time Placement Group (PTPG)** placement strategy for
+launching instances with the PTP hardware clock (PHC) enabled, extended in
+June 2026 to 26 additional EC2 instance types across all commercial regions.
+
+**Design guidance:**
+- 1 ms obligations are comfortably met with cloud PTP.
+- **100 µs HFT obligations need care.** PTP typical error bounds are inside 100 µs
+  but the requirement is on *maximum* divergence, monitored and evidenced. Build
+  continuous clock-offset monitoring with alerting and retained evidence — the
+  auditor asks for the record, not the design.
+- Where the obligation is 100 µs and the workload is genuinely HFT, GPS/PTP
+  grandmaster in colo remains the defensible answer.
+- **Retain clock-sync evidence** alongside the transaction records it timestamps.
+
+---
+
+## 7. Market Data Licensing and Entitlements
+
+Frequently the binding constraint, and usually discovered late.
+
+- **Exchange agreements govern where data may be processed and who may see it.**
+  Moving a feed into a cloud region, or copying it across clouds, can constitute
+  redistribution under the agreement. Check before designing, not after.
+- **Non-display fees** apply to automated consumption and are assessed per
+  application/use case. Cloud elasticity multiplies the number of consuming
+  processes — model the fee impact of horizontal scaling.
+- **Derived data rules** determine whether an analytic output is itself licensable.
+- **Entitlement enforcement must live somewhere explicit** in the architecture —
+  typically at the fan-out tier — with an audit trail of who received what.
+- **Per-user/per-device counting** is a real reporting obligation; the platform
+  must be able to produce it.
+
+**Architectural consequence:** the fan-out and entitlement tier is a control
+point, not just a distribution mechanism. Place it where you can log, enforce and
+report — and where its egress cost is acceptable.
+
+---
+
+## 8. Cost Behaviour of Market Data in Cloud
+
+- **Egress scales with message volume**, and message volume spikes exactly when
+  the business is busiest. Cloud costs on market data platforms are correlated
+  with market volatility.
+- **Shared infrastructure introduces performance variance** that on-prem
+  dedicated hardware does not have. Budget for over-provisioning as the
+  mitigation, and count that in the comparison.
+- **Compute efficiency compounds.** The Graviton finding above (half the CPU at
+  equal latency) is a direct instance-count reduction across a fleet that runs
+  continuously.
+- **Storage tiering for tick archives** is where the savings are: hot recent data
+  on fast storage, historical in object storage with lifecycle policies, subject
+  to the retention immutability rules in `references/04`.
+
+---
+
+## 9. Reference Split-Plane Architecture
+
+```mermaid
+graph LR
+  subgraph COLO["Exchange colo / proximity DC"]
+    XC[Venue cross-connect<br/>multicast feeds]
+    FH[Feed handlers<br/>hardware timestamping]
+    GM[PTP grandmaster<br/>GPS traceable]
+    XC --> FH
+    GM -.-> FH
+  end
+
+  subgraph CLOUD["Cloud region – primary"]
+    NORM[Normalisation<br/>and enrichment]
+    FAN[Fan-out + entitlements<br/>control point]
+    ARCH[(Tick archive<br/>immutable retention)]
+    API[Client APIs<br/>global LB]
+    NORM --> FAN
+    NORM --> ARCH
+    FAN --> API
+  end
+
+  subgraph CLOUD2["Second cloud / second region"]
+    ANA[Research, backtesting,<br/>analytics]
+  end
+
+  FH -->|private circuit<br/>unicast, normalised| NORM
+  ARCH -->|cross-cloud circuit<br/>bulk, scheduled| ANA
+```
+
+Design rationale:
+- Multicast terminates in colo, where it works, next to accurate time
+- Only normalised unicast crosses the private circuit — smaller, cheaper, simpler
+- Entitlement enforcement sits at the single fan-out point
+- Archive replication to the second cloud is bulk and scheduled, so it can use
+  cheaper transfer and does not compete with the live path
+- The second cloud carries analytics, which is the workload that most benefits
+  from a different provider's tooling and gives a credible exit-strategy story
+  under DORA
