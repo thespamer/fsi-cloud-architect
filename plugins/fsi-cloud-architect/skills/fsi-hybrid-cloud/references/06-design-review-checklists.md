@@ -39,6 +39,14 @@ Everything downstream is unverifiable.
 
 - [ ] Connectivity product chosen matches the bandwidth, lead time and resiliency
       requirement — and the choice is justified against alternatives
+- [ ] **PSC/PrivateLink used for single-service private consumption, not as a
+      substitute for a real transit design** — and not standing up dozens of
+      per-service endpoints where a hub topology would serve better
+      (`02-private-connectivity.md` §10)
+- [ ] Load balancer choice matches the traffic (ALB/Application LB for HTTP,
+      NLB/passthrough Network LB for raw TCP-UDP or a PrivateLink/PSC
+      attachment target, GWLB only for inline appliance insertion —
+      `01-hybrid-topology.md` §8)
 - [ ] **Resiliency topology matches the claimed SLA tier** (GCP 99.99% = 4
       connections, 2 metros, separate EADs; AWS 99.99% = multi-site redundant)
 - [ ] No single device, facility or carrier appears in both paths

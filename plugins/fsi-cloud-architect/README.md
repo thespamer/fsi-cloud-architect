@@ -26,8 +26,8 @@ skills/fsi-hybrid-cloud/
 ├── SKILL.md                              # orientation + routing table
 ├── references/
 │   ├── 00-role-context.md                # the remit, priorities, what "good" looks like, first 90 days
-│   ├── 01-hybrid-topology.md             # transit design, routing, DNS, cross-cloud identity
-│   ├── 02-private-connectivity.md        # Interconnect / Direct Connect / AWS Interconnect playbook
+│   ├── 01-hybrid-topology.md             # transit design, routing, DNS, cross-cloud identity, load balancing (ILB/ALB/NLB)
+│   ├── 02-private-connectivity.md        # Interconnect / Direct Connect / AWS Interconnect playbook + Private Service Connect / PrivateLink
 │   ├── 03-low-latency-market-data.md     # latency budgets, tuning, multicast, time sync, licensing
 │   ├── 04-security-compliance-fsi.md     # 17a-4, FINRA, DORA, MiFID II, SOC 2, BACEN → controls
 │   ├── 05-landing-zone-iac.md            # org structure, IaC, GKE/Cloud Run standards, CI/CD, observability, FinOps

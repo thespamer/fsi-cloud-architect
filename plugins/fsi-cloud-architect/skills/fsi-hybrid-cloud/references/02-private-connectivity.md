@@ -2,7 +2,9 @@
 
 Cloud Interconnect, Cross-Cloud Interconnect, Direct Connect and AWS Interconnect
 — what to choose, how to size it, and the settings that decide whether it works
-at 03:00.
+at 03:00. Plus Private Service Connect and PrivateLink (§10) — a different,
+narrower problem: exposing or consuming one service privately, not joining
+two networks.
 
 All figures here are sourced in `references/07-verified-facts.md`.
 
@@ -282,3 +284,67 @@ drive where the fan-out tier lives.
 | Cross-cloud path down | Fall back to routing via on-prem if the address plan and capacity permit — design and test this, do not assume it |
 | MTU mismatch after a change | Standing synthetic test that sends max-MTU DF packets end to end on every path |
 | Complete cloud region loss | Second region attached over its own circuits, with the data replication path sized and tested |
+
+---
+
+## 10. Private Service Connect and PrivateLink — a Different Problem Than §1–9
+
+Everything above this section is about **joining networks** — two sites that
+need a routable path between their whole address spaces. Private Service
+Connect (GCP) and PrivateLink (AWS) solve a narrower, more common problem:
+**let one specific service be consumed privately, without joining the
+networks it lives in.** Confusing the two leads to over-building — running a
+full Interconnect or a peering mesh to reach a single API that a PSC endpoint
+or an interface endpoint would have solved in an afternoon.
+
+**Mechanics, briefly** (full detail and sources in `07-verified-facts.md` §14):
+
+- **PSC (Google Cloud):** consumer creates a PSC endpoint — a forwarding rule
+  with an internal IP in their own VPC — that attaches to a service
+  attachment the producer publishes, fronted by an internal passthrough
+  Network Load Balancer. No peering, no transitive-routing problem, no CIDR
+  overlap to negotiate. Same mechanism also fronts Google APIs (PSC for
+  Google APIs) and, in the reverse direction, lets a producer reach into a
+  consumer's VPC (PSC interfaces).
+- **PrivateLink (AWS):** provider publishes a VPC endpoint service backed by
+  an NLB (or a Gateway Load Balancer, for inline appliance insertion).
+  Consumer creates an interface endpoint (an ENI with a private IP) in their
+  own subnet, or — for S3/DynamoDB only — a routed gateway endpoint. Since
+  November 2024, interface endpoints can reach a VPC endpoint service in a
+  **different AWS Region** without cross-region peering.
+
+**When this is the right tool, in FSI terms:**
+
+- Publishing a market-data or reference-data API to a subsidiary, an acquired
+  entity mid-integration (see `11-ma-cloud-integration.md`), or an external
+  partner — without handing them a route into the wider VPC or estate
+- Consuming a SaaS vendor's endpoint privately — most vendors serving
+  regulated customers now publish a PrivateLink/PSC front door precisely so
+  the traffic never touches the public internet
+- One platform team publishing a shared internal service (secrets, a feature
+  store, a model endpoint — see `08-genai-ml-platform.md` §2) to every
+  consuming team, without a peering mesh that grows as O(n²)
+- Any cross-account/cross-project service consumption where the consumer
+  should get access to *the service*, not visibility into the producer's
+  network
+
+**When it is the wrong tool:** the consumer needs to reach many services, or
+services that don't exist yet, in the producer's network — that is a
+peering, NCC/TGW, or Interconnect/Direct Connect problem (§1–9), not a
+one-endpoint-at-a-time problem. Standing up a PSC endpoint per service does
+not scale past a few dozen before the operational overhead argues for a hub
+model instead.
+
+**Design review points:**
+
+- Does the DNS name resolve to the private endpoint from every estate that
+  needs it, not just the one it was built for? (See `01-hybrid-topology.md`
+  §5.)
+- For a published service: is the producer-side load balancer's health check
+  and failover independent of any one zone?
+- For AWS cross-region PrivateLink: is the consumer region on the current
+  supported list? (Confirm — `07-verified-facts.md` §14 records the launch
+  list, which will have grown.)
+- Is there a plan for what happens when a consumer needs *more than one*
+  service from the same producer — one endpoint per service, or time to
+  reconsider a hub topology?

@@ -224,7 +224,47 @@ requirement stops being microseconds.
 
 ---
 
-## 8. Anti-Patterns
+## 8. Load Balancing — ILB / ALB / NLB
+
+Named explicitly in the role definition, and the naming is where GCP and AWS
+diverge most from each other. Full product tables and sources in
+`07-verified-facts.md` §15 — this is the decision framework.
+
+**Google Cloud** splits its load balancers along two axes: layer (Application
+= HTTP/HTTPS, Network = TCP/UDP) and scope (global vs regional, external vs
+internal). Network Load Balancer is not one product — it is two: **Proxy**
+Network Load Balancer (TCP, optional SSL offload) and **Passthrough** Network
+Load Balancer (TCP/UDP/ESP/GRE/ICMP, preserves client source IP). When
+someone says "the ILB" in casual conversation they almost always mean the
+**internal passthrough Network Load Balancer** — the zonal/regional workhorse
+behind most private service-to-service traffic, and the load balancer a PSC
+service attachment fronts (`02-private-connectivity.md` §10).
+
+**AWS** keeps three distinct products: **ALB** (Layer 7, path/host routing,
+WAF integration — the default web/API front door), **NLB** (Layer 4, static
+IP per AZ, the load balancer PrivateLink VPC endpoint services attach to),
+and **Gateway Load Balancer** (transparent inline insertion of third-party
+appliances — firewalls, IDS/IPS — a narrow, specific case, not a
+general-purpose choice).
+
+**Decision rule that resolves most arguments:** HTTP-layer routing, WAF, or
+content-based rules → Application Load Balancer (either cloud). Raw TCP/UDP
+performance, a static IP, or the load balancer is what a private-endpoint
+service attaches to → Network Load Balancer (either cloud, mind GCP's
+proxy-vs-passthrough split). Inline traffic inspection → Gateway Load
+Balancer, and only for that.
+
+**Cross-cloud consistency for engineering teams:** since GKE and Cloud Run are
+the named runtime targets and Lambda is the named AWS serverless target
+(`00-role-context.md` §4), the golden paths (`10-cloud-enablement.md` §3)
+should default GKE ingress to the internal/external Application Load Balancer
+via Gateway API or Ingress, and Cloud Run to its managed HTTPS load balancing
+— so an engineering team crossing clouds meets the same HTTP-vs-TCP decision
+framed the same way, not two unrelated products to learn from scratch.
+
+---
+
+## 9. Anti-Patterns
 
 | Anti-pattern | What goes wrong |
 | --- | --- |
@@ -236,3 +276,4 @@ requirement stops being microseconds.
 | Relying on default BGP timers | ~90 s of blackholed traffic on every circuit failure |
 | Buying a resiliency tier without building its topology | The SLA does not apply; nobody discovers this until the incident review |
 | Copying market data across clouds "because it's easier" | Exchange redistribution licensing exposure plus egress cost |
+| Standing up a PSC/PrivateLink endpoint per service past a few dozen | Operational overhead that argues for a hub topology instead (`02-private-connectivity.md` §10) |

@@ -15,7 +15,7 @@ description: |
   migration plans, defines HA/DR tiers and tooling, models cost, and maps
   regulatory obligations to GCP and AWS controls.
 metadata:
-  version: "0.2.1"
+  version: "0.3.0"
   domain: "financial services cloud architecture and platform enablement"
 ---
 
@@ -36,8 +36,8 @@ numbers; the body below is orientation only.
 | Question is about | Read |
 | --- | --- |
 | What the role actually is, priorities, what "good" looks like, first 90 days | `references/00-role-context.md` |
-| Overall topology, transit, routing, DNS, cross-cloud identity | `references/01-hybrid-topology.md` |
-| Interconnect / Direct Connect / AWS Interconnect sizing, resiliency, BGP, MTU | `references/02-private-connectivity.md` |
+| Overall topology, transit, routing, DNS, cross-cloud identity, load balancing (ILB/ALB/NLB) | `references/01-hybrid-topology.md` |
+| Interconnect / Direct Connect / AWS Interconnect sizing, resiliency, BGP, MTU, Private Service Connect, PrivateLink | `references/02-private-connectivity.md` |
 | Latency budgets, instance selection, multicast, tick data, market data licensing | `references/03-low-latency-market-data.md` |
 | SEC 17a-4, FINRA, DORA, MiFID II, SOC 2, BACEN, encryption, guardrails | `references/04-security-compliance-fsi.md` |
 | Landing zone, org structure, IaC, CI/CD, observability, FinOps, capex | `references/05-landing-zone-iac.md` |

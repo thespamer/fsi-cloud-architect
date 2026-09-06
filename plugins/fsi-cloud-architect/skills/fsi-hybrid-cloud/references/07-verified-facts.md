@@ -456,7 +456,105 @@ Source: [Architecting disaster recovery for cloud infrastructure outages — Goo
 
 ---
 
-## 14. Things Deliberately Not Recorded Here
+## 14. Private Service Connect and AWS PrivateLink
+
+**Private Service Connect (PSC), Google Cloud.** A consumer creates a PSC
+endpoint (a forwarding rule that gets an internal IP in the consumer's own VPC)
+that attaches to a service attachment published by a producer. Traffic stays on
+Google's network. No VPC peering, so none of peering's transitive-routing or
+CIDR-overlap limitations apply. The producer side is fronted by an internal
+passthrough Network Load Balancer and needs a dedicated NAT subnet. PSC also
+covers **Private Service Connect for Google APIs** (reaching Google/Cloud APIs
+through an internal IP instead of the public API endpoint) and **Private
+Service Connect interfaces** (the reverse direction: letting a published
+service reach into a consumer's VPC).
+
+Source: [Private Service Connect overview — Google Cloud](https://docs.cloud.google.com/vpc/docs/private-service-connect) ·
+[Access published services through endpoints — Google Cloud](https://docs.cloud.google.com/vpc/docs/configure-private-service-connect-services)
+
+**AWS PrivateLink.** A provider publishes a VPC endpoint service backed by a
+Network Load Balancer or a Gateway Load Balancer. A consumer creates an
+interface endpoint — an ENI with a private IP — in their own VPC/subnet, or a
+gateway endpoint (S3/DynamoDB only, no ENI, routed via a prefix-list route).
+Traffic stays on the AWS network; nothing is exposed to the public internet or
+requires VPC peering.
+
+**AWS PrivateLink now supports native cross-region connectivity** (announced
+26 November 2024): an interface endpoint can reach a VPC endpoint service in a
+different AWS Region within the same partition, without cross-region peering
+or transiting the public internet. At launch this covered a specific set of
+regions (US East N. Virginia, US West Oregon, Europe Ireland, Asia Pacific
+Singapore, South America São Paulo, Asia Pacific Tokyo, Asia Pacific Sydney) —
+confirm current regional coverage before designing against it.
+
+Source: [AWS PrivateLink now supports cross-Region connectivity — AWS What's New](https://aws.amazon.com/about-aws/whats-new/2024/11/aws-privatelink-across-region-connectivity) ·
+[Share your services through AWS PrivateLink — AWS documentation](https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html)
+
+**When to reach for PSC/PrivateLink rather than peering, Interconnect or a
+transit hub:** the requirement is "let this one specific service be consumed
+privately," not "join these two networks." Typical FSI cases — a market-data
+or reference-data API published to a subsidiary, an acquired entity, or a
+partner without giving them a route into the wider VPC; consuming a SaaS
+vendor's endpoint privately (many vendors now publish a PrivateLink/PSC
+front door precisely so customers avoid the public internet); one business
+unit's platform team publishing a shared service (secrets, feature store,
+model endpoint) to every other BU without a mesh of peering connections.
+
+See `references/08-genai-ml-platform.md` §2 for the private-inference-specific
+case (Vertex AI dedicated PSC endpoints, Bedrock/SageMaker PrivateLink
+interface endpoints) — that is a live application of this pattern, not a
+separate mechanism.
+
+---
+
+## 15. Load Balancing — Google Cloud and AWS
+
+**Google Cloud's current load balancer family** (2026 naming) splits along two
+axes — layer (Application vs Network) and scope (global vs regional, external
+vs internal):
+
+| Family | Variant | Scope | Protocols |
+| --- | --- | --- | --- |
+| Application Load Balancer | Global external | Global | HTTP/HTTPS |
+| Application Load Balancer | Regional external | Regional | HTTP/HTTPS |
+| Application Load Balancer | Regional internal | Regional | HTTP/HTTPS |
+| Application Load Balancer | Cross-region internal | Multi-region | HTTP/HTTPS |
+| Proxy Network Load Balancer | Global external | Global | TCP, optional SSL offload |
+| Proxy Network Load Balancer | Regional external / internal | Regional | TCP |
+| Passthrough Network Load Balancer | Global external | Global (Preview) | TCP, UDP, ESP, GRE, ICMP, ICMPv6 |
+| Passthrough Network Load Balancer | Regional external | Regional | TCP, UDP, ESP, GRE, ICMP, ICMPv6 |
+| Passthrough Network Load Balancer | Internal | Regional only | TCP, UDP, ICMP, ICMPv6, SCTP, ESP, AH, GRE |
+
+The naming is the thing that trips people up coming from AWS: "Network Load
+Balancer" on GCP has two different products (proxy vs passthrough) with
+different protocol support, and "Application Load Balancer" is always Layer 7
+regardless of global/regional scope. The **ILB** engineers usually mean in
+casual conversation is the **internal passthrough Network Load Balancer** —
+the zonal/regional building block behind most private service-to-service
+traffic, and the one that sits behind a PSC service attachment (§14).
+
+Source: [Choose a load balancer — Google Cloud Load Balancing documentation](https://docs.cloud.google.com/load-balancing/docs/choosing-load-balancer)
+
+**AWS's current load balancer family** (Elastic Load Balancing):
+
+| Type | Layer | Typical FSI use |
+| --- | --- | --- |
+| **Application Load Balancer (ALB)** | 7 (HTTP/HTTPS/gRPC) | Path/host-based routing, WAF integration, mTLS termination — the default for web and API front doors |
+| **Network Load Balancer (NLB)** | 4 (TCP/UDP/TLS) | Ultra-low latency, static IP per AZ, millions of requests/second, the load balancer PrivateLink/VPC endpoint services are built on |
+| **Gateway Load Balancer (GWLB)** | 3 (GENEVE encapsulation) | Transparent insertion of third-party appliances (firewalls, IDS/IPS) in-path, including as the target behind a Gateway Load Balancer endpoint |
+
+**Decision rule that resolves most arguments:** if the requirement is
+HTTP-layer routing, WAF, or content-based rules, use ALB. If the requirement is
+raw TCP/UDP performance, a static IP, or the load balancer is the thing a
+VPC endpoint service will attach to, use NLB. GWLB is a narrow, specific
+case — inline traffic inspection — not a general-purpose choice.
+
+Source: [Elastic Load Balancing features — AWS documentation](https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/elastic-load-balancing.html) ·
+[Access an inspection system using a Gateway Load Balancer endpoint — AWS documentation](https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-load-balancer-endpoints.html)
+
+---
+
+## 16. Things Deliberately Not Recorded Here
 
 These change too often or are too account-specific to state safely. Look them up
 live, in the provider console or documentation, every time:
@@ -473,3 +571,8 @@ live, in the provider console or documentation, every time:
 - Vertex AI model availability and per-model quotas
 - Whether the EU AI Act Omnibus text was formally adopted as agreed — confirm
   against the Official Journal before relying on the revised dates
+- **PSC and PrivateLink numeric quotas** (endpoints per VPC/region, service
+  attachments per producer, connections per endpoint) — these are configurable
+  quotas that change per project/account; check the console, not this file
+- **Current AWS regions with PrivateLink cross-region support** — the launch
+  region list above will have grown

@@ -4,14 +4,14 @@
     "name": "Juliano Souza"
   },
   "description": "Private marketplace for the FSI Cloud Architect plugin — GCP-first hybrid cloud architecture and platform enablement for financial services.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "plugins": [
     {
       "name": "fsi-cloud-architect",
       "source": "./plugins/fsi-cloud-architect",
       "displayName": "FSI Cloud Architect",
       "description": "Principal-level cloud architecture and platform enablement for financial services on Google Cloud (primary) and AWS. Covers hybrid and cross-cloud networking, GKE and Cloud Run platform standards, HA/DR tiers and tooling, GenAI platform with private inference and governance, FinOps and capex, M&A cloud integration, and FSI security and regulatory controls.",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "author": {
         "name": "Juliano Souza"
       },
@@ -29,6 +29,9 @@
         "networking",
         "interconnect",
         "direct-connect",
+        "private-service-connect",
+        "privatelink",
+        "load-balancing",
         "high-availability",
         "disaster-recovery",
         "genai",
