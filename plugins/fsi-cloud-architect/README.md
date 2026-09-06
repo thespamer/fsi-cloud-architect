@@ -1,14 +1,19 @@
 # FSI Cloud Architect
 
 Principal-level cloud architecture and platform enablement for financial
-services, on **Google Cloud (primary) and AWS**, with on-premises and
-colocation in the picture.
+services, market-data vendors and fintechs — a Bloomberg or a FactSet, a bank,
+a payments/BaaS platform — on **Google Cloud (primary) and AWS**, with
+on-premises and colocation in the picture.
 
-Built from the actual role definition: Cloud Architecture team inside Platform
-Infrastructure Engineering, charter of *strategy and execution plus enablement of
-the organisation to create and run optimised cloud-native solutions on GCP and
-AWS*, serving four enterprise strategies — digital transformation, M&A,
-investment programmes, and GenAI enablement.
+The role framing is built from an actual requisition: Cloud Architecture team
+inside Platform Infrastructure Engineering, charter of *strategy and execution
+plus enablement of the organisation to create and run optimised cloud-native
+solutions on GCP and AWS*, serving four enterprise strategies — digital
+transformation, M&A, investment programmes, and GenAI enablement
+(`references/00-role-context.md` is that FactSet case study specifically).
+The reference material itself generalises well beyond that one org — HFT and
+market data, PCI DSS, Open Finance/Open Banking and Banking as a Service are
+all in scope for any financial-services, market-data or fintech platform.
 
 ---
 
@@ -16,8 +21,8 @@ investment programmes, and GenAI enablement.
 
 | Component | Name | Purpose |
 | --- | --- | --- |
-| Agent | `fsi-cloud-architect` | Principal Cloud Architect persona. Designs and reviews architectures, plans cloud programmes and migrations, builds enablement artefacts, defines HA/DR tiers and tooling, architects GenAI platform capability, models cost, handles M&A integration |
-| Skill | `fsi-hybrid-cloud` | The knowledge base — twelve reference files, Terraform for hybrid connectivity and a GCP platform baseline, and an operations CLI cheat-sheet |
+| Agent | `fsi-cloud-architect` | Principal Cloud Architect persona. Designs and reviews architectures, plans cloud programmes and migrations, builds enablement artefacts, defines HA/DR tiers and tooling, architects GenAI platform capability, models cost, handles M&A integration, PCI/Open Finance/BaaS architecture |
+| Skill | `fsi-hybrid-cloud` | The knowledge base — fifteen reference files, Terraform for hybrid connectivity and a GCP platform baseline, and an operations CLI cheat-sheet |
 
 ### Skill contents
 
@@ -36,7 +41,10 @@ skills/fsi-hybrid-cloud/
 │   ├── 08-genai-ml-platform.md           # Vertex AI, GKE Inference Gateway, private inference, AI governance
 │   ├── 09-ha-dr-patterns.md              # tiers, patterns, dependency traps, DR tooling and testing
 │   ├── 10-cloud-enablement.md            # platform as product, golden paths, adoption, migration velocity
-│   └── 11-ma-cloud-integration.md        # cloud due diligence, integration, TSA exit, divestiture
+│   ├── 11-ma-cloud-integration.md        # cloud due diligence, integration, TSA exit, divestiture
+│   ├── 12-pci-dss.md                     # cardholder data scope, tokenization, GCP/AWS controls, HSM/key custody
+│   ├── 13-open-finance-open-banking.md   # FAPI, directory of participants, consent, Open Finance Brasil, PSD2/UK/FDX context
+│   └── 14-banking-as-a-service.md        # BaaS/embedded finance, ledger architecture, multi-tenancy, sponsor-bank model
 └── examples/
     ├── terraform-gcp-interconnect.tf     # Dedicated + Cross-Cloud Interconnect, BFD, MTU
     ├── terraform-aws-directconnect.tf    # DX, DXGW, TGW, transit VIFs, multicast domain
@@ -49,17 +57,20 @@ skills/fsi-hybrid-cloud/
 ## How to use it
 
 **Ask a question.** The skill triggers on cloud architecture, enablement,
-networking, GKE/Cloud Run, HA/DR, GenAI platform, cost and FSI compliance topics.
+networking, GKE/Cloud Run, HA/DR, GenAI platform, cost, HFT/market-data,
+PCI DSS, Open Finance/Open Banking, Banking-as-a-Service and FSI compliance
+topics.
 
 **Design something.** Describe the constraints and ask for a topology or a
 platform capability. You get options with a comparison table, a Mermaid diagram,
 failure modes, a build path, the module interface workload teams consume, and
 open questions.
 
-**Review something.** Point it at a design document. It runs eleven checklists —
-requirements, connectivity, DNS and identity, latency and market data, security
-and compliance, GenAI, resilience and DR, operations and cost, enablement, M&A
-integration, documentation — and returns findings graded Blocker / Major / Minor
+**Review something.** Point it at a design document. It runs fourteen
+checklists — requirements, connectivity, DNS and identity, latency and market
+data, security and compliance, GenAI, resilience and DR, operations and cost,
+enablement, M&A integration, PCI DSS, Open Finance/Open Banking, Banking as a
+Service, documentation — and returns findings graded Blocker / Major / Minor
 / Observation, each with the concrete failure and a recommendation carrying a
 number.
 
@@ -89,16 +100,26 @@ an ADR set, a migration plan, a due diligence report.
   a financial data firm — and a perimeter that blocks the data scientists gets
   bypassed, so the package mirror ships with it.
 - **Regulation constrains topology**, not just paperwork.
+- **PSC/PrivateLink solve a different problem than transit.** Expose or
+  consume one service privately; don't join two networks to reach one API.
+- **A ledger is append-only and double-entry, with idempotency on every
+  money-movement call** — never a mutable balance field.
 
 ---
 
 ## Currency
 
-Reference material verified **August 2026**, including AWS Interconnect
-(GA April 2026), Partner Cross-Cloud Interconnect for AWS, Cloud Interconnect
-400 Gbps circuits, Cloud Run GPUs, GKE Inference Gateway routing benchmarks, the
-Precision Time Placement Group expansion, and the **EU AI Act Omnibus revised
-deadlines** (transparency still live 2 August 2026; high-risk postponed).
+Reference material verified **August–September 2026**, including AWS
+Interconnect (GA April 2026), Partner Cross-Cloud Interconnect for AWS, Cloud
+Interconnect 400 Gbps circuits, Cloud Run GPUs, GKE Inference Gateway routing
+benchmarks, the Precision Time Placement Group expansion, the **EU AI Act
+Omnibus revised deadlines** (transparency still live 2 August 2026; high-risk
+postponed), AWS PrivateLink cross-region connectivity (Nov 2024), the Amazon
+QLDB discontinuation and Aurora PostgreSQL migration path (announced Jul
+2024), ENA Express published performance numbers, the Current/Cloud Spanner
+banking case study (Dec 2024), the Open Finance Brasil FAPI Security Profile,
+and the UK Open Banking "Future Entity" governance transition (in progress as
+of Jan 2026 — actively changing).
 
 Cloud specifications change. `references/07-verified-facts.md` lists what was
 deliberately left out because it changes too often — pricing, per-region quotas,

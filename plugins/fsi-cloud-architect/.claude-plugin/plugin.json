@@ -1,7 +1,7 @@
 {
   "name": "fsi-cloud-architect",
-  "version": "0.3.0",
-  "description": "Principal-level cloud architecture and platform enablement for financial services on Google Cloud (primary) and AWS. Covers hybrid and cross-cloud networking, GKE and Cloud Run platform standards, HA/DR tiers and tooling, GenAI platform with private inference and governance, FinOps and capex, M&A cloud integration, and FSI security and regulatory controls.",
+  "version": "0.4.0",
+  "description": "Principal-level cloud architecture and platform enablement for financial services, market-data vendors and fintechs on Google Cloud (primary) and AWS. Covers hybrid and cross-cloud networking, GKE and Cloud Run platform standards, HA/DR tiers and tooling, GenAI platform with private inference and governance, FinOps and capex, M&A cloud integration, HFT and low-latency market data, PCI DSS, Open Finance/Open Banking, Banking as a Service, and FSI security and regulatory controls.",
   "author": {
     "name": "Juliano Souza"
   },
@@ -28,8 +28,14 @@
     "finops",
     "mergers-acquisitions",
     "low-latency",
+    "hft",
     "market-data",
     "financial-services",
+    "fintech",
+    "pci-dss",
+    "open-finance",
+    "open-banking",
+    "banking-as-a-service",
     "compliance"
   ],
   "license": "MIT"

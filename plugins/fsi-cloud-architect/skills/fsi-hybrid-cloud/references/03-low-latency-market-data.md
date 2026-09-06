@@ -94,13 +94,28 @@ after launch, and re-verify after any scaling event or instance replacement.
 | --- | --- | --- |
 | High-performance NIC | ENA (Elastic Network Adapter) | **gVNIC** required for high bandwidth |
 | Extra bandwidth tier | Instance-family dependent | **Tier_1 networking** per-VM configuration |
+| HPC/AI-focused fabric (not for HFT) | EFA (Elastic Fabric Adapter) | — |
 | Kernel bypass | **DPDK** or **XDP zero-copy** | DPDK, hardware offload |
 | Jumbo frames | Within VPC; mind the DX/TGW ceilings | Within VPC; mind the attachment MTU |
 
 **ENA Express / SRD is not recommended for HFT-style workloads.** It can modestly
 inflate p50 baseline latency. It is a throughput-and-tail-recovery feature for
-bulk flows, not a latency feature for small messages. Use DPDK or XDP zero-copy
-instead when microseconds matter.
+bulk flows, not a latency feature for small messages. AWS's own published
+numbers make the trade-off explicit: up to **93% reduction in P99.9 flow
+latency** and **400% higher single-flow throughput**, with a large in-memory
+database benchmark showing **60× at P100 for SET and >100× at P100 for GET**.
+Those are tail-latency-under-load and throughput wins for bulk/bursty flows —
+not a p50 latency win for the small, latency-critical messages a feed handler
+or matching engine sends. Use DPDK or XDP zero-copy instead when microseconds
+matter on the hot path; reach for ENA Express for the bulk ingestion or
+replication side of the same system.
+
+**Elastic Fabric Adapter (EFA) is not the same tool either.** EFA plus its
+SRD-based `libfabric` interface targets tightly-coupled HPC and AI/ML
+workloads — MPI collectives, distributed training — not exchange
+connectivity or order routing. It is easy to reach for by name-association
+("it's AWS's low-latency networking thing") on an HFT design; it solves a
+different problem than a feed handler's or a trading engine's network path.
 
 ### OS
 

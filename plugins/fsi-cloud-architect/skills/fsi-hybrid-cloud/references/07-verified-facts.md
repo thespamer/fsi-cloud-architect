@@ -554,7 +554,100 @@ Source: [Elastic Load Balancing features — AWS documentation](https://docs.aws
 
 ---
 
-## 16. Things Deliberately Not Recorded Here
+## 16. PCI DSS — Provider Responsibility Highlights
+
+**Google Cloud PCI DSS v4.0.1 shared-responsibility matrix**: Google takes
+sole responsibility for firewall-configuration security of underlying
+infrastructure, default anti-spoofing, malware protection for GCP's own
+infrastructure, and default at-rest encryption for customer data. Named
+services mapped to requirements: Cloud KMS/Cloud HSM (key management), Cloud
+DLP (PAN discovery/masking), Secret Manager, Network Intelligence Center
+(network diagram/data-flow documentation), Security Command Center Premium
+(malware/threat detection), Shielded VMs, VPC Service Controls.
+
+Source: [Google Cloud PCI DSS v4.0.1 Shared Responsibility Matrix](https://services.google.com/fh/files/misc/gcp_pci_dss_v4_responsibility_matrix.pdf)
+
+**AWS** completes a Level 1 PCI DSS assessment as a Service Provider **twice a
+year**, publishing its AoC through AWS Artifact. Named services: CloudHSM
+(FIPS 140-2 Level 3 HSM), **AWS Payment Cryptography** (managed HSM
+specifically for PIN generation/translation/verification —
+`GeneratePinData`/`TranslatePinData` APIs — distinct from general-purpose
+KMS/CloudHSM), Security Groups/NACLs/Network Firewall (segmentation),
+GuardDuty Malware Protection, Macie (sensitive-data discovery), AWS Config
+(configuration drift), CloudTrail (API audit trail).
+
+Source: [PCI DSS v4.0 Compliance on AWS whitepaper](https://d1.awsstatic.com/whitepapers/compliance/pci-dss-compliance-on-aws-v4-102023.pdf) ·
+[AWS Payment Cryptography — TranslatePinData API reference](https://docs.aws.amazon.com/payment-cryptography/latest/DataAPIReference/API_TranslatePinData.html)
+
+---
+
+## 17. Open Finance Brasil — FAPI Security Profile
+
+Mandates: PS256 for JWS signing, RSA-OAEP with A256GCM for JWE encryption on
+sensitive messages; authorization servers must accept signed+encrypted JWE
+request objects or require Pushed Authorization Requests (PAR); TLS 1.2+
+restricted to `TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256` and
+`TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384` with session resumption/renegotiation
+disabled; two authentication levels (LoA2 single-factor, LoA3
+multi-factor); Dynamic Client Registration per RFC 7591/7592 with keys
+registered via `jwks_uri`; access tokens expire in 300–900 seconds; CPF/CNPJ
+claims for identity binding.
+
+Source: [Open Finance Brasil Financial-grade API Security Profile 1.0](https://openfinancebrasil.atlassian.net/wiki/spaces/OF/pages/240649123) ·
+[Open Finance Brasil Dynamic Client Registration](https://openfinancebrasil.atlassian.net/wiki/spaces/OF/pages/1334116474)
+
+---
+
+## 18. UK Open Banking — Governance in Transition
+
+The Open Banking Implementation Entity (OBIE) has been succeeded by **Open
+Banking Limited**. As of early 2026 a "Future Entity" restructuring process
+is under way to establish the long-term central standard-setting body —
+**this is actively changing; confirm current governance before naming a
+specific authority in a client-facing document.**
+
+Source: [Open banking – process to establish a Future Entity — Global Regulation Tomorrow, Jan 2026](https://www.regulationtomorrow.com/2026/01/open-banking-process-to-establish-a-future-entity/)
+
+---
+
+## 19. Banking-as-a-Service Ledger Precedents
+
+**Google Cloud Spanner (Current, a US challenger bank — published 6 Dec
+2024):** migrated its core member/account/wallet/gateway graph service to
+Spanner for consistent writes, horizontal scale, low read latency and
+multi-region failover. Results: **zero availability incidents since
+migration**, close to **5,000 transactions/second**, **RTO and RPO both
+reduced more than 10×** (RTO now ~1 hour), zero-downtime/zero-data-loss
+phased cutover (migrate reads → verify → migrate writes).
+
+Source: [How Current leveraged Spanner to build a resilient platform for banking services — Google Cloud Blog](https://cloud.google.com/blog/products/databases/current-challenger-bank-database-resilience-spanner/)
+
+**AWS Amazon QLDB (Quantum Ledger Database) was discontinued** (announced
+July 2024). AWS's published migration path for ledger/audit-trail workloads
+is **Amazon Aurora PostgreSQL** with cryptographic verification patterns
+layered on top. Do not design a new AWS ledger around QLDB.
+
+Source: [Migrate an Amazon QLDB Ledger to Amazon Aurora PostgreSQL — AWS Database Blog](https://aws.amazon.com/pt/blogs/database/migrate-an-amazon-qldb-ledger-to-amazon-aurora-postgresql/)
+
+---
+
+## 20. AWS ENA Express — Published Performance Numbers
+
+ENA Express (built on the Scalable Reliable Datagram / SRD protocol) claims,
+per AWS: up to **93% reduction in P99.9 traffic-flow latency** and up to
+**400% increase in single-flow throughput**. A cited in-memory-database
+benchmark showed **60× improvement at P100 for SET operations** and **>100×
+at P100 for GET operations**. These are tail-latency-under-load and
+throughput numbers for bulk/bursty flows — not a p50 latency claim for small
+messages. See `03-low-latency-market-data.md` §4 for why this makes ENA
+Express the wrong tool for an HFT hot path despite the impressive headline
+numbers.
+
+Source: [Using ENA Express to improve workload performance on AWS — AWS Networking & Content Delivery Blog](https://aws.amazon.com/blogs/networking-and-content-delivery/using-ena-express-to-improve-workload-performance-on-aws/)
+
+---
+
+## 21. Things Deliberately Not Recorded Here
 
 These change too often or are too account-specific to state safely. Look them up
 live, in the provider console or documentation, every time:
@@ -576,3 +669,11 @@ live, in the provider console or documentation, every time:
   quotas that change per project/account; check the console, not this file
 - **Current AWS regions with PrivateLink cross-region support** — the launch
   region list above will have grown
+- **The current UK Open Banking governance authority** — the "Future Entity"
+  process was ongoing as of this writing; confirm which body is authoritative
+- **Any US open banking / CFPB Rule 1033 compliance date** — this area is
+  moving fastest of any regime covered here
+- **PCI DSS assessor-specific interpretations** of segmentation adequacy —
+  QSAs vary; confirm with the assigned assessor before finalizing a design
+- **Which regions currently support AWS Payment Cryptography** — confirm
+  against the service's current region list before scoping a design

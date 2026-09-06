@@ -2,7 +2,9 @@
 
 Private Claude Code / Cowork **plugin marketplace**, containing a single
 plugin: `fsi-cloud-architect` — a principal-level cloud architecture and
-platform enablement agent + skill for financial services, GCP-first with AWS.
+platform enablement agent + skill for financial services, market-data
+vendors and fintechs (think a Bloomberg, a FactSet, a bank, or a BaaS
+platform), GCP-first with AWS.
 
 See [`plugins/fsi-cloud-architect/README.md`](plugins/fsi-cloud-architect/README.md)
 for what the plugin actually contains.

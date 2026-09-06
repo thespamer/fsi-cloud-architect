@@ -8,8 +8,9 @@ Say plainly when a design is sound. Do not manufacture findings.
 
 **Sections:** A requirements · B connectivity · C DNS and identity · D latency and
 market data · E security and compliance · F GenAI · G resilience and DR ·
-H operations and cost · I enablement · J M&A integration · K documentation.
-Skip F and J when they do not apply; work the rest every time.
+H operations and cost · I enablement · J M&A integration · L PCI DSS ·
+M Open Finance/Open Banking · N Banking as a Service · O documentation.
+Skip F, J, L, M and N when they do not apply; work the rest every time.
 
 ---
 
@@ -305,7 +306,77 @@ place at the destination.
 
 ---
 
-## K. Documentation and Decisions
+## L. PCI DSS and Payment Data
+
+Skip unless the design stores, processes or transmits cardholder data. See
+`12-pci-dss.md`.
+
+- [ ] Cardholder Data Environment (CDE) is a dedicated VPC/account, not a
+      subnet or security-group carve-out of a shared network
+- [ ] Earliest possible tokenization point identified — nothing downstream of
+      it is in scope unless it genuinely needs to be
+- [ ] PSC/PrivateLink used for anything the CDE consumes from outside its
+      boundary, not VPC peering
+- [ ] Segmentation penetration-testing cadence defined (at least every six
+      months and after every CDE-boundary change)
+- [ ] Cryptographic key management uses split-knowledge/dual-control, not
+      just access-controlled single ownership
+- [ ] Sensitive authentication data (CVV, PIN, full track data) confirmed
+      never stored post-authorization, anywhere
+- [ ] Anything "connected to" the CDE (logging, monitoring, jump hosts)
+      evaluated for whether it pulls into scope
+
+**Blocker if:** sensitive authentication data is stored post-authorization, or
+the CDE has no network-layer isolation of its own.
+
+---
+
+## M. Open Finance and Open Banking
+
+Skip unless the design exposes or consumes regulated open-data APIs. See
+`13-open-finance-open-banking.md`.
+
+- [ ] API gateway validates signed (JWS) request objects and enforces PAR
+      where the applicable regime's profile requires it
+- [ ] Directory-of-participants certificate chain validated per call, not
+      cached indefinitely
+- [ ] Consent enforced at the data layer, not only at the gateway
+- [ ] Key/certificate rotation process updates `jwks_uri` and is tested, not
+      manual and undocumented
+- [ ] Multi-jurisdiction platforms implement each regime's profile
+      (Brazil FAPI, UK/PSD2, US FDX) as its own configuration
+- [ ] Core banking/ledger system reachable only through the aggregation
+      layer, never directly from the API gateway
+
+**Major if:** consent scope is enforced only at the API gateway with no
+data-layer check.
+
+---
+
+## N. Banking as a Service and Ledger Integrity
+
+Skip unless the design includes a core-banking or embedded-finance ledger.
+See `14-banking-as-a-service.md`.
+
+- [ ] Ledger is append-only and double-entry — no mutable "balance" column
+- [ ] Every money-movement API call carries an idempotency key
+- [ ] Tenant isolation enforced at the data layer (row-level security or
+      per-tenant storage), not only in application code
+- [ ] On AWS: ledger design does not assume Amazon QLDB is available (it is
+      discontinued) — confirms Aurora PostgreSQL or DynamoDB instead
+- [ ] Any operation spanning more than one service uses a saga with tested
+      compensating actions
+- [ ] KYC/AML screening point in the call path is identified and auditable
+      independently of application logs
+- [ ] Card/PIN cryptography routed through an HSM-backed service, never
+      general application code
+
+**Blocker if:** the ledger has no idempotency mechanism on money-movement
+calls, or tenant isolation is enforced only in application code.
+
+---
+
+## O. Documentation and Decisions
 
 - [ ] Topology diagram names every attachment, router, ASN, prefix and failure
       domain
