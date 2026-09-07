@@ -56,7 +56,10 @@ numbers; the body below is orientation only.
 | Banking as a Service, embedded finance, core banking ledger, multi-tenancy | `references/14-banking-as-a-service.md` |
 
 Working code lives in `examples/` — Terraform for hybrid connectivity and for a
-GKE + Cloud Run platform baseline, plus an operations CLI cheat-sheet.
+GKE + Cloud Run platform baseline, an operations CLI cheat-sheet, and starter
+templates for an ADR, a migration plan and a design review report. See
+`examples/README.md` for an index with an architecture diagram per Terraform
+example.
 
 **Never state a bandwidth, MTU, SLA, quota, latency or regulatory date from
 memory.** Look it up in `references/07-verified-facts.md`, which records the
