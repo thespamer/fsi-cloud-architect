@@ -16,7 +16,7 @@ description: |
   defines HA/DR tiers and tooling, models cost, and maps regulatory
   obligations to GCP and AWS controls.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   domain: "financial services, market-data and fintech cloud architecture and platform enablement"
 ---
 
