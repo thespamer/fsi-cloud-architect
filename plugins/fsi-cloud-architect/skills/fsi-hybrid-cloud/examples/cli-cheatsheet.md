@@ -383,3 +383,47 @@ gcloud compute routers get-status ROUTER --region=REGION \
 
 # 5. Failover actually tested? Shut one session, measure, restore, record the number.
 ```
+
+---
+
+## Microsecond Latency and Kernel Scheduling (HFT)
+
+`ping`'s p99 in the Path Validation section is millisecond-resolution — fine
+for a hybrid circuit, too coarse for the microsecond RTTs and scheduling
+jitter this skill's low-latency guidance is built on
+(`03-low-latency-market-data.md`, `07-verified-facts.md` §7, §26). Use these
+to actually measure what that guidance assumes.
+
+```bash
+# --- Instance-to-instance RTT, microsecond resolution ---
+# sockperf is the standard tool for this — ICMP ping cannot resolve the
+# numbers in 07-verified-facts.md §7 (GCP C4: p50 15µs / p99 22µs).
+# Server side:
+sockperf server -p 12345
+# Client side — ping-pong gives per-message latency, ping-pong summary gives percentiles:
+sockperf ping-pong -i <server-ip> -p 12345 -t 30 --full-log /tmp/sockperf.log
+sockperf ping-pong -i <server-ip> -p 12345 -t 30 --pps=max   # under load, not just idle
+
+# --- Kernel scheduling latency ---
+# cyclictest is what produced the 63µs (standard kernel) vs 50µs (PREEMPT_RT)
+# data point in 07-verified-facts.md §26. Run on the isolated cores specifically.
+sudo cyclictest -m -Sp99 -i 200 -h 400 -D 60 -a <isolated-cpu-list>
+
+# --- Confirm CPU isolation is actually in effect, not just configured ---
+cat /sys/devices/system/cpu/isolated
+cat /proc/cmdline | tr ' ' '\n' | grep -E 'isolcpus|nohz_full|rcu_nocbs'
+numactl --hardware                         # confirm NUMA node boundaries
+taskset -pc <pid>                          # which cores is the hot-path process actually on?
+
+# --- Hugepages actually allocated, not just requested ---
+grep -i huge /proc/meminfo
+cat /sys/kernel/mm/transparent_hugepage/enabled   # THP should be 'never' on the hot path
+
+# --- NIC-level drops and ring buffer occupancy ---
+# ties to the "Ring buffer sizing" guidance in 03-low-latency-market-data.md §4
+ethtool -S eth0 | grep -iE 'drop|discard|error|overrun'
+ethtool -g eth0                            # current vs max ring sizes
+
+# --- Real-time scheduling priority of the hot-path process ---
+chrt -p <pid>
+```
