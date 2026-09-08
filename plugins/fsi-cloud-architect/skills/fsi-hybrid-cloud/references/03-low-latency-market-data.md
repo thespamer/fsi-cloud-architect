@@ -47,12 +47,18 @@ GCP C4 represents roughly a **40% reduction in median RTT versus C3**, and holds
 consistent across 48/96/192 vCPU shapes and 1×–100× market replay speeds, with
 in-process latency under 1.5 µs.
 
-**Bare metal wins on the tail.** Metal instances show a p99.9 advantage of
-**3.3–10.9 µs (15–29%)** over full-slot virtualised equivalents. For anything
-where tail latency is the SLA, that is the whole argument.
+**Bare metal wins on the tail — on both clouds.** Metal instances show a
+p99.9 advantage of **3.3–10.9 µs (15–29%)** over full-slot virtualised
+equivalents (measured on AWS). **GCP is not virtualised-only either** — C3,
+C4, C4A (Arm), C4D and X4/Z3 all ship genuine bare-metal machine types; see
+§10. No published instance-to-instance RTT benchmark exists yet for GCP
+metal specifically — treat the AWS tail-latency advantage as suggestive for
+GCP, not as a number to quote, until measured.
 
-**Where cloud does not reach.** Sub-10 µs wire-to-wire, deterministic jitter
-floors, and FPGA-in-path designs remain colocation territory. Do not promise
+**Where cloud does not reach — narrower than it used to be.** Sub-10 µs
+wire-to-wire and deterministic jitter floors remain colocation territory on
+both clouds. **FPGA-in-path is now a cloud SKU on AWS** (F1/F2, §11) — but
+not on GCP, where FPGA-in-path still means colocation. Do not promise
 otherwise.
 
 ---
@@ -123,7 +129,12 @@ different problem than a feed handler's or a trading engine's network path.
   and `m5zn` from OS tuning alone; gains are much smaller on the newest platforms
   (~1% on `m8azn`), which arrive better tuned.
 - **CPU pinning and core isolation** (`isolcpus`, `nohz_full`, `rcu_nocbs`) for
-  the hot path.
+  the hot path — all three must target the **same CPU set** to work together;
+  `nohz_full` only holds the tick off while exactly one task runs on the core.
+  Full parameter detail, the recent `isolcpus=nohz` convergence, and a
+  measured **~300 ns** tickless tradeoff: `07-verified-facts.md` §26.
+- **Hugepages** (`hugepagesz=1GB hugepages=<N> default_hugepagesz=1GB`) — cuts
+  TLB misses and initialisation time; size against the working set.
 - **NUMA / vNUMA alignment** — keep the NIC, the polling thread and the memory on
   the same node. Misalignment costs more than most application tuning gains.
 - **P-state and C-state tuning** — disable deep C-states, pin to performance
@@ -147,6 +158,11 @@ hypervisor system time that guest-side tools like `sar` do not capture.
 Multi-vCPU instances pay additional hypervisor overhead and context-switching
 cost that single-vCPU instances avoid, so **performance does not scale linearly
 with vCPU count**. Benchmark the actual shape; do not extrapolate.
+
+**GCP's Arm answer is Axion (C4A)**, including a bare-metal size (§10). No
+published feed-workload benchmark equivalent to the Graviton finding above
+exists yet for C4A — state the efficiency case as a hypothesis to validate,
+not as a measured result, until it is run.
 
 ### Storage
 
@@ -351,3 +367,136 @@ Design rationale:
 - The second cloud carries analytics, which is the workload that most benefits
   from a different provider's tooling and gives a credible exit-strategy story
   under DORA
+
+---
+
+## 10. Bare Metal, Both Clouds
+
+"Choose the largest instance size for exclusive host access" (§3) has a
+sharper form: a genuine bare-metal machine type, with no hypervisor between
+the application and the host at all.
+
+**AWS**: the `.metal` family used throughout §2's benchmark table
+(`m8azn.metal`, `m5zn.metal`, `c7i.24xl` metal).
+
+**GCP**: C3, C4, C4A (Arm — Google's own Axion silicon), C4D and X4/Z3 all
+ship bare-metal machine types (`*-metal` suffix), not only the
+Oracle-specific Bare Metal Solution appliance. Google's own framing for
+bare metal names **real-time financial systems** as a target workload
+alongside third-party hypervisors and CI/CD. Full spec table and sources:
+`07-verified-facts.md` §22.
+
+**What is not yet measured:** an instance-to-instance RTT benchmark for GCP
+bare metal in the style of the AWS table in §2. Until that exists, plan a
+validation test rather than assume the AWS tail-latency advantage transfers
+directly.
+
+---
+
+## 11. FPGA and Hardware Acceleration
+
+**AWS ships FPGA as a cloud SKU.** EC2 F1 (legacy) and F2 (current
+generation, GA December 2024) put AMD/Xilinx Virtex UltraScale+ FPGAs behind
+a standard EC2 instance — up to 8 FPGAs, 192 vCPU AMD EPYC host, 100 Gbps
+network. This is infrastructure, not a finished product: an HFT team still
+writes and loads its own tick-to-trade FPGA image. Full spec table and
+sources: `07-verified-facts.md` §23.
+
+**Neither GCP nor Azure offers a general-purpose FPGA instance today.** On a
+GCP-first estate, **FPGA-in-path means a colocation appliance**, not a
+Compute Engine SKU — the same conclusion as the "where cloud does not
+reach" note in §2, now with the one named exception (AWS F1/F2) stated
+explicitly rather than left implicit.
+
+**Design consequence:** if the FPGA tier is genuinely required and the
+estate is GCP-first, either (a) accept a colo FPGA appliance regardless of
+which cloud runs everything else, or (b) place only the FPGA-accelerated
+function on AWS F2 as a deliberate, named exception to "GCP primary" —
+document it as such rather than let it drift into an unplanned second
+production cloud.
+
+---
+
+## 12. Colocation, Data Centre Proximity, and the Hardware That Lives There
+
+Expands the `COLO` subgraph in §9's split-plane diagram: what is actually in
+that box, and where it physically sits.
+
+**Exchange colocation is a specific building, not a metro area.** CME's
+matching engine is in CyrusOne, Aurora, IL; NYSE's is in its own Mahwah, NJ
+facility; Nasdaq's is in Carteret, NJ (an Equinix-owned facility since
+2016); LSE's is on the Digital Realty Slough Trading Estate campus, UK.
+"Get close to the exchange" means a cross-connect or a rack in one of
+these specific buildings, not merely "the same city." Illustrative list
+with cloud on-ramps documented at each: `07-verified-facts.md` §25 — treat
+it as an orientation anchor, confirm current facility rosters live.
+
+**The cloud on-ramp is frequently already in the building.** AWS Direct
+Connect and, separately, Google Cloud Interconnect both list on-ramps at
+Equinix NY5 in Secaucus, NJ — the same New Jersey/New York campus family
+that hosts the Nasdaq/AWS cloud-enabled capital-markets partnership. A
+private circuit from a colo cage into the cloud is often a cross-connect
+within the same campus, not a new metro fiber build — check the on-ramp
+roster for the specific facility before pricing a circuit.
+
+**Servers and NICs in the colo cage.** **AMD (Solarflare/Xilinx) X2/X3**
+NICs (`X2522`, `X3522`) are the de facto standard in electronic trading
+environments, paired with **OpenOnload** — a socket-transparent,
+user-space kernel-bypass stack that accelerates existing socket
+applications without a DPDK-style rewrite. This is a different tool from
+the DPDK/XDP guidance in §4: Onload for transparent acceleration of
+existing code, DPDK/XDP when the datapath is being rewritten anyway.
+
+**Layer-1 switches in the colo cage.** **Arista 7130** (ex-Metamako) and
+**Cisco Nexus 3550-F/3550-H** (ex-Exablaze) both do FPGA-based Layer-1
+port replication in single-digit nanoseconds, and sub-100ns Layer-2
+forwarding — the cross-connect and tap/aggregation layer between the
+venue's cross-connect and the feed handler in §9's `COLO` subgraph. Full
+detail and sources: `07-verified-facts.md` §24.
+
+**Time source placement is part of the colocation design, not an
+afterthought.** The PTP grandmaster in §9's diagram needs GPS line of
+sight — a rooftop antenna, not a rack in the interior of the building.
+Centralising one grandmaster per facility (rather than one GPS antenna per
+rack) is the common pattern; the grandmaster's own oscillator quality and
+antenna placement bound every downstream clock's accuracy regardless of
+how good the boundary clocks are (§6).
+
+---
+
+## 13. Kubernetes and Low-Latency Workloads
+
+The default instinct is to run the whole split-plane architecture (§9) on
+GKE or EKS. The mechanisms below make a *bounded* low-latency pod viable —
+they do not make the matching-engine or feed-handler hot path a good fit
+for an orchestrated cluster. Full mechanism table and sources:
+`07-verified-facts.md` §27.
+
+**What actually works, in order of how close to the wire it reaches:**
+
+1. **`cpuManagerPolicy: static` + `topologyManagerPolicy: single-numa-node`**
+   — Guaranteed-QoS pods get pinned, NUMA-aligned whole cores instead of the
+   shared CFS pool. GKE exposes this via `NodeKubeletConfig`; it's upstream
+   Kubernetes, so it applies to EKS the same way.
+2. **CNI choice is not a detail — a benchmark found the wrong one adds up to
+   12 ms of p99 latency per call** in a 500-node cluster, against a network-
+   path budget measured in **milliseconds** end to end (§1). Cilium in eBPF
+   mode or Calico in pure L3/BGP mode (no overlay) are the low-overhead
+   choices; VXLAN-style encapsulating overlays are not.
+3. **`hostNetwork: true`** removes the CNI from the data path entirely — the
+   escape hatch when even the best CNI's overhead doesn't clear the bar.
+4. **SR-IOV + Multus** gives one pod a second, hardware-isolated NIC path —
+   the pattern named explicitly for real-time financial systems. EKS
+   supports the Multus CNI plugin.
+
+**Do not add isolation overhead to the hot path.** GKE Sandbox (gVisor)
+intercepts syscalls in a user-space kernel — inherent overhead on every
+syscall, which is the opposite of what a feed handler wants. Keep
+sandboxed node pools for untrusted or multi-tenant workloads, never for the
+latency-critical tier.
+
+**Recommended split:** Kubernetes runs normalisation, fan-out, entitlements
+and the API tier — the `CLOUD` subgraph in §9, already one hop removed from
+the wire. The feed handler and any matching engine with a sub-millisecond
+SLA stay on bare metal (§10) or a purpose-built instance, with Kubernetes
+managing everything around them rather than that hot path itself.
