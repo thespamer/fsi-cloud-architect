@@ -723,9 +723,277 @@ live, in the provider console or documentation, every time:
   region list above will have grown
 - **The current UK Open Banking governance authority** — the "Future Entity"
   process was ongoing as of this writing; confirm which body is authoritative
+- **Exchange colocation facility rosters and cloud on-ramp presence** (§25) —
+  named as long-standing orientation anchors, not a verified current
+  cross-connect price/availability list
 - **Any US open banking / CFPB Rule 1033 compliance date** — this area is
   moving fastest of any regime covered here
 - **PCI DSS assessor-specific interpretations** of segmentation adequacy —
   QSAs vary; confirm with the assigned assessor before finalizing a design
 - **Which regions currently support AWS Payment Cryptography** — confirm
   against the service's current region list before scoping a design
+
+---
+
+## 22. GCP Bare Metal Machine Series
+
+**Correction to a claim this file used to imply:** GCP is not limited to
+Bare Metal Solution (the Oracle-specific colocated appliance). Compute Engine
+ships genuine bare-metal machine types — direct, non-hypervisor-mediated
+access to host CPU and memory — across six series:
+
+| Series | Machine types | vCPU / memory | Network | Processor |
+| --- | --- | --- | --- | --- |
+| **C3** | `c3-{highcpu,standard,highmem}-192-metal` | up to 192 vCPU, 1,536 GB | 100 Gbps standard / 200 Gbps Tier_1 | 4th-gen Intel Xeon (Sapphire Rapids) |
+| **C4** | standard / highmem variants | up to 288 vCPU, 2,232 GB, 18 TiB local Titanium SSD | 100 Gbps standard / 200 Gbps Tier_1 | 6th-gen Intel Xeon (Granite Rapids) |
+| **C4A** | `c4a-{standard,highmem}-96-metal` | 96 vCPU, 384–768 GB | 50 Gbps standard / 100 Gbps Tier_1 | Google Axion (Arm Neoverse V2) |
+| **C4D** | highcpu / standard / highmem | up to 384 vCPU, 3,072 GB | 100 Gbps standard / 200 Gbps Tier_1 | 5th-gen AMD EPYC (Turin) |
+| **X4** (memory-optimized) | multiple | up to 1,920 vCPU, 32,768 GB | up to 100 Gbps | 4th-gen Intel Xeon |
+| **Z3** (storage-optimized) | `z3-highmem-192-highlssd-metal` | 192 vCPU, 1,536 GB, 72,000 GiB Titanium SSD | 100 Gbps standard / 200 Gbps Tier_1 | — |
+
+C4A-metal — Google's first Arm bare-metal type — reached GA **28 May 2026**.
+Google's own framing for bare metal names "real-time financial systems"
+explicitly as a target workload, alongside third-party hypervisors and
+security/CI use cases.
+
+This directly supersedes the AWS-only "choose the largest size / bare metal
+wins on the tail" guidance in `03-low-latency-market-data.md` §2–3: the same
+lever exists on GCP, across x86 (C3/C4/C4D/X4/Z3) and Arm (C4A).
+
+Source: [Bare metal instances — Google Cloud documentation](https://docs.cloud.google.com/compute/docs/instances/bare-metal-instances) ·
+[New Axion C4A metal offers bare-metal performance on Arm — Google Cloud Blog](https://cloud.google.com/blog/products/compute/new-axion-c4a-metal-offers-bare-metal-performance-on-arm) ·
+[Compute Engine C3 bare-metal and X4 machine types now GA — Google Cloud Blog](https://cloud.google.com/blog/products/compute/compute-engine-c3-bare-metal-and-x4-machine-types-now-ga)
+
+**Not yet found published:** an instance-to-instance RTT benchmark for GCP
+bare metal (C3/C4/C4A/C4D metal) in the style of the AWS `.metal` table in
+§7 or the GCP C4 *virtualized* benchmark in the same section. Treat the
+AWS metal tail-latency advantage (3.3–10.9 µs / 15–29% at p99.9, §7) as
+suggestive, not as a number to quote for GCP metal — this needs the same
+tuned instance-to-instance test run on GCP before it goes in a design.
+
+---
+
+## 23. FPGA-Accelerated Instances — AWS F1/F2, and the GCP/Azure Gap
+
+**AWS EC2 F1.** Combines x86 CPUs with Xilinx (now AMD) Virtex UltraScale+
+FPGAs, programmed with custom hardware accelerators. Still supported with
+its developer toolchain, but AWS's own newer generation is F2 — treat F1 as
+legacy for a new design.
+
+**AWS EC2 F2**, GA **12 December 2024** (a smaller `f2.6xlarge` size GA
+**5 February 2025**):
+
+| Fact | Value |
+| --- | --- |
+| FPGAs | Up to 8× AMD Virtex UltraScale+ HBM VU47P (16 GB HBM each, up to 460 GB/s bandwidth) |
+| FPGA logic | 2.85M system logic cells, 9,024 DSP slices per FPGA — up to 28 TOPS INT8 |
+| Host CPU | 3rd-gen AMD EPYC (Milan), up to 192 vCPU |
+| Memory | up to 2 TiB |
+| Network | up to 100 Gbps |
+| Local storage | up to 2× 7.6 TiB NVMe |
+| Smallest size | `f2.6xlarge` — 1 FPGA, 24 vCPU, 256 GB, 950 GB NVMe, 12.5 Gbps |
+
+F2's stated use cases are genomics, media processing, big-data and
+network-security acceleration — not exchange connectivity out of the box;
+an HFT team would still be writing its own tick-to-trade FPGA image.
+
+**Neither Google Cloud nor Azure publishes a general-purpose FPGA IaaS
+instance today.** No GCP FPGA machine type exists in Compute Engine's
+catalogue as of this writing. Practical consequence for a GCP-first design:
+**FPGA-in-path for market data or order routing on GCP means colocation**,
+not a Compute Engine instance type — reinforcing the "sub-10 µs / FPGA
+remains colo territory" position in `03-low-latency-market-data.md` §2. If
+the workload can tolerate AWS-only for the FPGA tier specifically, F2 is an
+option; otherwise budget for a colo FPGA appliance (§24) regardless of
+primary cloud.
+
+Sources: [Amazon EC2 F2 instances](https://aws.amazon.com/ec2/instance-types/f2/) ·
+[Amazon EC2 F2 instances, featuring up to 8 FPGAs, are generally available — AWS What's New](https://aws.amazon.com/about-aws/whats-new/2024/12/amazon-ec2-f2-instances-8-fpgas/) ·
+[Amazon EC2 F2.6xlarge, a new F2 instance size — AWS What's New](https://aws.amazon.com/about-aws/whats-new/2025/02/amazon-ec2-f2-6xlarge-new-f2-instance-size)
+
+---
+
+## 24. Low-Latency Layer-1/Layer-2 Hardware — NICs and Switches
+
+The feed-handler NIC and the cross-connect switch that matter for colo
+deployments, named specifically because "kernel bypass" and "low-latency
+switch" get proposed generically without naming the actual product:
+
+**NICs — AMD (Solarflare/Xilinx) X2/X3 series.** The de facto standard NIC
+in electronic trading environments. `X2522` (10/25 GbE) is the established
+low-latency card; `X3522` is AMD's newer part, claimed **~27% lower latency**
+than the X2522 on typical trading workloads. Both pair with **OpenOnload**
+(Onload) — an open-source, user-space network stack (`Xilinx-CNS/onload` on
+GitHub) that intercepts socket calls to bypass the kernel network stack
+transparently, i.e. without rewriting the application to a DPDK-style API.
+Sits alongside, not in place of, the DPDK/XDP guidance in §4 below — Onload
+is the socket-transparent option; DPDK/XDP are the rewrite-the-datapath
+option.
+
+**Layer-1 switches — Arista 7130 (ex-Metamako, acquired 2018).** FPGA-based
+Layer-1 switching; port-to-port replication at the electrical level in
+**~5 ns**, Layer-2 forwarding under **~100 ns** with an optimised pipeline.
+
+**Layer-1 switches — Cisco Nexus 3550-F/3550-H (ex-Exablaze, acquired
+2019)**. Same category: port-to-port latency **under ~5 ns** for pure
+Layer-1 monitoring and distribution (tap/aggregation), not general L2/L3
+switching.
+
+These are colocation-cage hardware, not cloud SKUs — they matter for the
+`COLO` subgraph in `03-low-latency-market-data.md` §9's split-plane diagram,
+specifically the feed-handler ingest and cross-connect layer, not for
+anything running inside GCP or AWS.
+
+Sources: [AMD Solarflare X2522 — 10/25GbE Low Latency Ethernet Adapter](https://www.xilinx.com/products/boards-and-kits/x2-series/x2522.html) ·
+[Xilinx-CNS/onload — GitHub](https://github.com/Xilinx-CNS/onload) ·
+[Redefining Low Latency Switching — Once Again — Arista Blog](https://blogs.arista.com/blog/redefining-low-latency-switching-once-again) ·
+[Arista Acquires Metamako — Arista press release](https://www.arista.com/en/company/news/press-release/6070-pr-20180912) ·
+[Nexus Ultra-Low Latency Solutions — Cisco/ESG white paper](https://www.cisco.com/c/dam/en/us/products/collateral/switches/nexus-3550-series/esg-white-paper-ultralowlatency.pdf) ·
+[Cisco to acquire Exablaze for high-performance switching — TechTarget](https://searchnetworking.techtarget.com/news/252475631/Cisco-to-acquire-Exablaze-for-high-performance-switching)
+
+---
+
+## 25. Exchange Colocation Hubs and Cloud On-Ramps
+
+Named as orientation anchors — long-standing, publicly documented
+facilities — not as a verified, current cross-connect price/availability
+list (see §21). Confirm live against the provider's facility locator before
+committing a design.
+
+| Venue | Primary colo facility | Cloud on-ramp documented there |
+| --- | --- | --- |
+| CME | CyrusOne, Aurora, IL | AWS Direct Connect location inside the facility (already used in `03-low-latency-market-data.md` §5 Option B) |
+| NYSE | Mahwah, NJ (NYSE-owned Liquidity Center) | — |
+| Nasdaq | Carteret, NJ (Equinix-owned since the 2016 Verizon acquisition) | Nasdaq, Equinix and AWS partner on cloud-enabled capital-markets infrastructure at this site |
+| LSE | Slough Trading Estate, UK (Digital Realty campus) | — |
+
+**AWS Direct Connect on-ramps, NY/NJ metro:** Equinix NY5, Secaucus (also
+reachable from NY2, NY4, NY7); 165 Halsey Street, Newark; CoreSite NY1/NY2,
+Manhattan.
+
+**AWS Direct Connect on-ramps, London:** Equinix LD5, Slough (also reachable
+from LD4–LD6); Telehouse West (also reachable from Telehouse Docklands).
+
+**Google Cloud Interconnect on-ramp:** Equinix NY5, Secaucus, lists Google
+Cloud Interconnect among its on-ramp services on the same campus that hosts
+the Nasdaq/AWS partnership above — i.e. GCP, AWS and Nasdaq's own matching
+engine are cross-connectable from the same building without a wide-area
+circuit.
+
+**Design consequence:** a private circuit into the cloud from a venue's colo
+cage is frequently a cross-connect within the same building or campus to an
+existing on-ramp, not a new metro fiber build — check the on-ramp roster for
+the specific facility before pricing a new circuit.
+
+Sources: [AWS Direct Connect locations](https://aws.amazon.com/directconnect/locations/) ·
+[Equinix NY5](https://www.equinix.com/data-centers/americas-colocation/united-states-colocation/new-york-data-centers/ny5) ·
+[NYSE Opens Mahwah Data Center — Data Center Knowledge](https://www.datacenterknowledge.com/colocation/nyse-opens-mahwah-data-center) ·
+[Nasdaq breaks ground on data center expansion at Equinix facility in New Jersey — DCD](https://www.datacenterdynamics.com/en/news/nasdaq-breaks-ground-on-data-center-expansion-at-equinix-facility-in-new-jersey/) ·
+[Digital Realty enhances European colocation capabilities with acquisition of data center campus in Slough — TipRanks](https://www.tipranks.com/news/press-releases/digital-realty-enhances-european-colocation-capabilities-with-acquisition-of-data-center-campus-in-slough)
+
+---
+
+## 26. Kernel Isolation Parameters — isolcpus / nohz_full / rcu_nocbs / Hugepages
+
+Expands the OS-tuning bullet list in `03-low-latency-market-data.md` §4 with
+the specific parameters and their interaction, since "isolate the core" is
+three separate settings that must target the same CPU set to work together:
+
+- **`isolcpus=<cpuset>`** — scheduler does not place ordinary processes on
+  these cores.
+- **`nohz_full=<cpuset>`** — timer tick stops firing when exactly **one**
+  task is runnable on the core. Starting a second thread on that core forces
+  the tick back on to multiplex — this is a common source of "tuning that
+  stopped working" when a second thread lands on an isolated core.
+- **`rcu_nocbs=<cpuset>`** — offloads RCU callback processing off the
+  isolated cores.
+- **Recent kernel convergence:** `isolcpus=nohz` was merged as equivalent to
+  `nohz_full`, extended to cover the same set of kernel noise sources —
+  reduces this to one parameter going forward; confirm which kernel version
+  ships it before relying on the shorthand.
+- **`hugepagesz=1GB hugepages=<N> default_hugepagesz=1GB`** — cuts TLB
+  misses and improves initialisation time; size `<N>` against the
+  application's working set.
+- **Measured tradeoff, not a free lunch:** switching `CONFIG_NO_HZ_IDLE` to
+  `CONFIG_NO_HZ_FULL` on a PREEMPT_RT kernel showed a consistent **~300 ns**
+  average latency *increase* from context-tracking overhead in one published
+  measurement. Tickless is a tail-latency and jitter tool, not an
+  unconditional p50 win — measure on the target kernel and workload.
+- **GCP C4 bare-metal scheduling-latency data point:** one measured study
+  found standard-kernel maximum scheduling latency around **63 µs**, versus
+  roughly **50 µs** on a PREEMPT_RT kernel, on the same C4 bare-metal
+  hardware.
+
+Sources: [Low Latency Tuning Guide — Erik Rigtorp](https://rigtorp.se/low-latency-guide/) ·
+[sched/isolation: Make "isolcpus=nohz" equivalent to "nohz_full" — LKML](https://lkml.iu.edu/hypermail/linux/kernel/2409.2/04791.html) ·
+[NO_HZ_FULL vs NO_HZ_IDLE: ~300ns cyclictest latency regression — LKML](https://lkml.iu.edu/hypermail/linux/kernel/2603.3/06802.html) ·
+[CPU Isolation for HFT: The isolcpus Lie and What Actually Works](https://nikhilpadala.com/blog/cpu-optimization-linux-latency/)
+
+---
+
+## 27. Kubernetes and Low-Latency Workloads — GKE/EKS Mechanisms and the Anti-Pattern Boundary
+
+Teams reach for Kubernetes by default for everything in the split-plane
+architecture (`03-low-latency-market-data.md` §9). The mechanisms below make
+a *bounded* low-latency pod viable; they do not make the matching-engine or
+feed-handler hot path a good idea inside an orchestrated cluster.
+
+**Kubelet-level mechanisms (GKE and EKS both — this is upstream Kubernetes,
+not a GKE-only feature):**
+
+| Setting | Effect |
+| --- | --- |
+| `cpuManagerPolicy: static` | Pins Guaranteed-QoS pods to exclusive whole cores instead of the shared CFS pool |
+| `full-pcpus-only` / `prefer-align-cpus-by-uncorecache` options | Aligns pinned cores to physical-core and cache-topology boundaries, not hyperthread siblings |
+| `topologyManagerPolicy: single-numa-node` | Refuses to schedule a pod whose CPU, memory and device (e.g. SR-IOV VF) allocations would cross a NUMA boundary |
+| Reserved system CPUs (`--reserved-cpus`) | Keeps kubelet/OS daemons off the isolated core set — the Kubernetes-native equivalent of `isolcpus` (§26) |
+
+GKE exposes these through **`NodeKubeletConfig`** on a node pool.
+
+**Network path — the overlay tax is real and measured.** A CNI benchmark
+across 500-node clusters found the wrong CNI choice can add **12 ms of p99
+latency to every service call** — two to three orders of magnitude over the
+network-path budget in `03-low-latency-market-data.md` §1. Ranking, cloud-
+neutral: **Cilium in eBPF mode** measures within roughly **5% of bare-metal**
+networking (packet processing in-kernel via eBPF, no iptables chain
+traversal); **Calico in pure L3/BGP mode** (no overlay) is comparably clean;
+any **VXLAN or other encapsulating overlay** (default Flannel/Weave, or
+Calico/Cilium misconfigured into overlay mode) adds encapsulation overhead
+on top of the CNI's own processing cost. For the genuinely hot path, **pod
+`hostNetwork: true`** removes the CNI from the data path entirely — the
+usual escape hatch when even the best CNI's overhead is unacceptable.
+
+**Direct hardware access from a pod — SR-IOV + Multus + DPDK.** **Multus**
+attaches a second (or third) NIC to a pod, separate from the primary
+cluster-network interface, typically backed by an **SR-IOV virtual
+function** so the pod gets a hardware-isolated, kernel-bypassed path — the
+pattern Intel documents by name for **real-time financial systems**,
+alongside live broadcast and connected-vehicle workloads. **AWS EKS supports
+the Multus meta-CNI plugin.** This is the Kubernetes-native way to give one
+pod the same kind of dedicated-NIC access §24's colo NICs give a bare-metal
+feed handler — combine with the Topology Manager row above so the SR-IOV VF
+and the pinned CPU land on the same NUMA node.
+
+**The isolation tools cut the other way — don't add them to the hot path.**
+GKE Sandbox (gVisor) intercepts syscalls in a user-space kernel for security
+isolation; that interception is inherent overhead on every syscall, the
+opposite of what a feed handler or matching engine wants. Reserve
+sandboxed/gVisor node pools for untrusted or multi-tenant workloads, never
+for the latency-critical tier.
+
+**Where this leaves the split-plane diagram (§9):** GKE/EKS with the
+mechanisms above is a defensible platform for **normalisation, fan-out,
+entitlements and the API tier** — the `CLOUD` subgraph nodes that are
+already one hop removed from the wire. It is not the recommended home for
+the feed handler that touches the exchange multicast feed or a matching
+engine with a sub-millisecond SLA — those stay on bare metal or a
+purpose-built instance (§22), with Kubernetes managing everything around
+them rather than that hot path itself.
+
+Sources: [Low Latency Workloads in Kubernetes: A Practitioner's Guide — Appvia](https://www.appvia.io/blog/low-latency-kubernetes) ·
+[Control Topology Management Policies on a Node — Kubernetes documentation](https://kubernetes.io/docs/tasks/administer-cluster/topology-manager/) ·
+[Node Resource Managers — Kubernetes documentation](https://kubernetes.io/docs/concepts/policy/node-resource-managers/) ·
+[Benchmark: Cilium 1.17 vs Calico 3.29 vs Flannel 0.25 — Kubernetes CNI Latency for 500-Node Clusters](https://dev.to/johalputt/benchmark-cilium-117-vs-calico-329-vs-flannel-025-kubernetes-cni-latency-for-500-node-clusters-4564) ·
+[Advanced Networking Features in Kubernetes — Intel Network Builders](https://builders.intel.com/docs/networkbuilders/adv-network-features-in-kubernetes-app-note.pdf) ·
+[miztiik/multus-on-eks — GitHub](https://github.com/miztiik/multus-on-eks) ·
+[GKE Sandbox — GKE security, Google Cloud documentation](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods)
