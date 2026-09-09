@@ -348,3 +348,14 @@ model instead.
 - Is there a plan for what happens when a consumer needs *more than one*
   service from the same producer — one endpoint per service, or time to
   reconsider a hub topology?
+- If the answer to the point above is "reconsider a hub topology": is the
+  third party being attached as a full spoke on the *existing* transit hub —
+  which gives it a path to every other spoke already there, not just to
+  you? A dedicated edge VPC/project as the spoke, with custom route export
+  filtering and hierarchical firewall policy scoping what it can reach, keeps
+  the blast radius to the relationship rather than the whole estate. The
+  general principle ("two estates fully routed to each other doubles the
+  blast radius") is written for M&A integration in
+  `11-ma-cloud-integration.md` §4, but it applies to any third party, not
+  only an acquired entity — see the anti-pattern entry in
+  `01-hybrid-topology.md` §9.

@@ -7,6 +7,42 @@ needs verification and name where to check.
 Verified: **August 2026**. Cloud specifications change; re-verify anything
 load-bearing before committing a design.
 
+## Index by Topic
+
+Generated from the section headings below — keep it in sync when adding or
+renaming a section, not as a separately-maintained document.
+
+| Topic | Primary §  | Related § |
+| --- | --- | --- |
+| GCP Dedicated Interconnect (speeds, SLA topology, MTU) | §1 | §5a |
+| GCP Cross-Cloud Interconnect (AWS/Azure/OCI/Alibaba) | §2 | §5 |
+| GCP networking feature GA/preview status (Next '26) | §3 | §22 |
+| AWS Direct Connect (speeds, resiliency tiers, SLA credits) | §4 | §5a, §25 |
+| AWS Interconnect — Multicloud / Last Mile (new product, GA Apr 2026) | §5 | §2, §4 |
+| BFD parameters, both clouds; AWS local-preference BGP communities | §5a | §1, §4 |
+| AWS Transit Gateway multicast | §6 | §27 (GCP has no equivalent) |
+| Instance-to-instance latency benchmarks (AWS `.metal`, GCP C4) | §7 | §22, §26 |
+| Time synchronisation — MiFID II RTS 25, PTP, Amazon Time Sync | §8 | §25 |
+| GCP compact/spread placement policies | §9 | §22 |
+| FactSet market-data-in-cloud published findings | §10 | §7 |
+| GenAI/AI-ML platform, private inference | §11 | §14 |
+| EU AI Act — revised timeline | §12 | — |
+| Disaster recovery — GCP guidance | §13 | — |
+| Private Service Connect / AWS PrivateLink | §14 | §11, §25 |
+| Load balancing — GCP and AWS | §15 | — |
+| PCI DSS — provider responsibility | §16 | — |
+| Open Finance Brasil — FAPI security profile | §17 | — |
+| UK Open Banking — governance in transition | §18 | — |
+| Banking-as-a-Service ledger precedents | §19 | — |
+| AWS ENA Express — published performance numbers | §20 | §26 |
+| What is deliberately *not* recorded here (check live instead) | §21 | — |
+| GCP bare-metal machine series (C3/C4/C4A/C4D/X4/Z3) | §22 | §7, §9 |
+| FPGA-accelerated instances (AWS F1/F2) and the GCP/Azure gap | §23 | §24 |
+| Low-latency Layer-1/Layer-2 hardware — NICs and switches | §24 | §23, §25 |
+| Exchange colocation hubs and cloud on-ramps | §25 | §4, §14 |
+| Kernel isolation parameters — isolcpus/nohz_full/rcu_nocbs/hugepages | §26 | §7, §27 |
+| Kubernetes and low-latency workloads (GKE/EKS mechanisms) | §27 | §26 |
+
 ---
 
 ## 1. Google Cloud — Dedicated Interconnect
@@ -152,6 +188,22 @@ Source: [Bidirectional Forwarding Detection (BFD) overview — Cloud Router](htt
 | AWS-side liveness detection multiplier | 3 |
 
 Source: [AWS Direct Connect FAQs](https://aws.amazon.com/directconnect/faqs/)
+
+### AWS Direct Connect — local-preference BGP communities
+
+| Community tag | Preference | Notes |
+| --- | --- | --- |
+| `7224:7100` | Low | |
+| `7224:7200` | Medium | **Applied by default** if no community tag is set |
+| `7224:7300` | High | Typical for the active leg of an active/passive pair; tag the passive leg `7224:7100` |
+
+Local preference set by these communities overrides AS_PATH length in route
+selection. Separately, AWS tags its own outbound advertisements with
+`7224:8100` (same-region origin) or `7224:8200` (same-continent origin) — an
+informational tag, not one you set.
+
+Source: [Use BGP communities to influence the routing path — AWS re:Post](https://repost.aws/knowledge-center/direct-connect-bgp-communities) ·
+[BGP route visibility — AWS Direct Connect documentation](https://docs.aws.amazon.com/directconnect/latest/UserGuide/bgp-route-visibility.html)
 
 ---
 
