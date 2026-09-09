@@ -8,15 +8,16 @@ description: |
   zones, golden paths, cloud programmes, migration velocity, GKE, Cloud Run,
   Terraform; high availability and disaster recovery, RTO/RPO; GenAI
   platform, Vertex AI, Bedrock, AI governance; FinOps, capex budgeting; M&A
-  cloud due diligence and integration; low latency, HFT, tick-to-trade,
-  market data, multicast; PCI DSS, Open Finance/Open Banking, Banking as a
+  cloud due diligence and integration; low latency, HFT, market data,
+  multicast, colo, bare metal, FPGA, kernel tuning, low-latency K8s; PCI
+  DSS, Open Finance/Open Banking, Banking as a
   Service; and FSI compliance — SEC 17a-4, FINRA, DORA, MiFID II, EU AI Act,
   SOC 2, BACEN, LGPD, data residency, exit strategy, concentration risk.
   Designs and reviews architectures, builds enablement and migration plans,
   defines HA/DR tiers and tooling, models cost, and maps regulatory
   obligations to GCP and AWS controls.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   domain: "financial services, market-data and fintech cloud architecture and platform enablement"
 ---
 
@@ -42,7 +43,7 @@ numbers; the body below is orientation only.
 | What the role actually is, priorities, what "good" looks like, first 90 days | `references/00-role-context.md` |
 | Overall topology, transit, routing, DNS, cross-cloud identity, load balancing (ILB/ALB/NLB) | `references/01-hybrid-topology.md` |
 | Interconnect / Direct Connect / AWS Interconnect sizing, resiliency, BGP, MTU, Private Service Connect, PrivateLink | `references/02-private-connectivity.md` |
-| Latency budgets, instance selection, multicast, tick data, market data licensing | `references/03-low-latency-market-data.md` |
+| Latency budgets, instance selection, bare metal, FPGA, colocation and data-centre proximity, low-latency NICs/switches, kernel and OS tuning, Kubernetes for low-latency, multicast, tick data, market data licensing | `references/03-low-latency-market-data.md` |
 | SEC 17a-4, FINRA, DORA, MiFID II, SOC 2, BACEN, encryption, guardrails | `references/04-security-compliance-fsi.md` |
 | Landing zone, org structure, IaC, CI/CD, observability, FinOps, capex | `references/05-landing-zone-iac.md` |
 | Reviewing someone else's design | `references/06-design-review-checklists.md` |
@@ -56,7 +57,10 @@ numbers; the body below is orientation only.
 | Banking as a Service, embedded finance, core banking ledger, multi-tenancy | `references/14-banking-as-a-service.md` |
 
 Working code lives in `examples/` — Terraform for hybrid connectivity and for a
-GKE + Cloud Run platform baseline, plus an operations CLI cheat-sheet.
+GKE + Cloud Run platform baseline, an operations CLI cheat-sheet, and starter
+templates for an ADR, a migration plan and a design review report. See
+`examples/README.md` for an index with an architecture diagram per Terraform
+example.
 
 **Never state a bandwidth, MTU, SLA, quota, latency or regulatory date from
 memory.** Look it up in `references/07-verified-facts.md`, which records the
