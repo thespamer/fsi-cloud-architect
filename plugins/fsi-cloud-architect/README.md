@@ -22,7 +22,7 @@ all in scope for any financial-services, market-data or fintech platform.
 | Component | Name | Purpose |
 | --- | --- | --- |
 | Agent | `fsi-cloud-architect` | Principal Cloud Architect persona. Designs and reviews architectures, plans cloud programmes and migrations, builds enablement artefacts, defines HA/DR tiers and tooling, architects GenAI platform capability, models cost, handles M&A integration, PCI/Open Finance/BaaS architecture |
-| Skill | `fsi-hybrid-cloud` | The knowledge base — fifteen reference files, Terraform for hybrid connectivity and a GCP platform baseline, and an operations CLI cheat-sheet |
+| Skill | `fsi-hybrid-cloud` | The knowledge base — seventeen reference files, Terraform for hybrid connectivity and a GCP platform baseline, and an operations CLI cheat-sheet |
 
 ### Skill contents
 
@@ -44,7 +44,9 @@ skills/fsi-hybrid-cloud/
 │   ├── 11-ma-cloud-integration.md        # cloud due diligence, integration, TSA exit, divestiture
 │   ├── 12-pci-dss.md                     # cardholder data scope, tokenization, GCP/AWS controls, HSM/key custody
 │   ├── 13-open-finance-open-banking.md   # FAPI, directory of participants, consent, Open Finance Brasil, PSD2/UK/FDX context
-│   └── 14-banking-as-a-service.md        # BaaS/embedded finance, ledger architecture, multi-tenancy, sponsor-bank model
+│   ├── 14-banking-as-a-service.md        # BaaS/embedded finance, ledger architecture, multi-tenancy, sponsor-bank model
+│   ├── 15-datacenter-lifecycle.md        # large-scale data migration, TCO vs cloud, repatriation, physical capacity, data centre exit
+│   └── 16-migration-strategy.md          # the 6 Rs, wave planning, Outposts/Local Zones/distributed cloud, DR testing and chaos engineering
 └── examples/
     ├── terraform-gcp-interconnect.tf     # Dedicated + Cross-Cloud Interconnect, BFD, MTU
     ├── terraform-aws-directconnect.tf    # DX, DXGW, TGW, transit VIFs, multicast domain
@@ -58,21 +60,21 @@ skills/fsi-hybrid-cloud/
 
 **Ask a question.** The skill triggers on cloud architecture, enablement,
 networking, GKE/Cloud Run, HA/DR, GenAI platform, cost, HFT/market-data,
-PCI DSS, Open Finance/Open Banking, Banking-as-a-Service and FSI compliance
-topics.
+PCI DSS, Open Finance/Open Banking, Banking-as-a-Service, data centre
+migration/TCO/repatriation, migration strategy and FSI compliance topics.
 
 **Design something.** Describe the constraints and ask for a topology or a
 platform capability. You get options with a comparison table, a Mermaid diagram,
 failure modes, a build path, the module interface workload teams consume, and
 open questions.
 
-**Review something.** Point it at a design document. It runs fourteen
+**Review something.** Point it at a design document. It runs fifteen
 checklists — requirements, connectivity, DNS and identity, latency and market
 data, security and compliance, GenAI, resilience and DR, operations and cost,
 enablement, M&A integration, PCI DSS, Open Finance/Open Banking, Banking as a
-Service, documentation — and returns findings graded Blocker / Major / Minor
-/ Observation, each with the concrete failure and a recommendation carrying a
-number.
+Service, documentation, data centre migration and exit — and returns findings
+graded Blocker / Major / Minor / Observation, each with the concrete failure
+and a recommendation carrying a number.
 
 **Invoke the agent explicitly** for larger work — a full architecture document,
 an ADR set, a migration plan, a due diligence report.

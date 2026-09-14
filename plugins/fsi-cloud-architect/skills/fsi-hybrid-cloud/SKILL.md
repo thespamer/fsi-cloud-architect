@@ -3,21 +3,21 @@ name: fsi-hybrid-cloud
 description: |
   Cloud architecture and platform enablement for financial services,
   market-data vendors and fintechs on Google Cloud (primary) and AWS. Use for
-  hybrid and multicloud design — Cloud Interconnect, NCC, Direct Connect,
-  Transit Gateway, PrivateLink, Private Service Connect, ILB/ALB/NLB; landing
-  zones, golden paths, cloud programmes, migration velocity, GKE, Cloud Run,
-  Terraform; high availability and disaster recovery, RTO/RPO; GenAI
-  platform, Vertex AI, Bedrock, AI governance; FinOps, capex budgeting; M&A
-  cloud due diligence and integration; low latency, HFT, market data,
-  multicast, colo, bare metal, FPGA, kernel tuning, low-latency K8s; PCI
-  DSS, Open Finance/Open Banking, Banking as a
-  Service; and FSI compliance — SEC 17a-4, FINRA, DORA, MiFID II, EU AI Act,
-  SOC 2, BACEN, LGPD, data residency, exit strategy, concentration risk.
-  Designs and reviews architectures, builds enablement and migration plans,
-  defines HA/DR tiers and tooling, models cost, and maps regulatory
-  obligations to GCP and AWS controls.
+  hybrid/multicloud design — Interconnect, NCC, Direct Connect, Transit
+  Gateway, PrivateLink, Private Service Connect, ILB/ALB/NLB; landing zones,
+  golden paths, migration velocity/strategy (6 Rs), GKE, Cloud Run,
+  Terraform; HA/DR tiers, RTO/RPO, DR testing, chaos engineering; GenAI
+  platform, Vertex AI, Bedrock, AI governance; FinOps, capex; M&A cloud
+  integration; low latency, HFT, market data, multicast, colo, bare metal,
+  FPGA, kernel tuning, Outposts/Local Zones; PCI DSS, Open Finance/Open
+  Banking, Banking as a Service; data centre lifecycle — migration, TCO vs
+  cloud, repatriation, capacity planning, DC exit; and FSI compliance —
+  17a-4, FINRA, DORA, MiFID II, EU AI Act, SOC 2, BACEN, LGPD, residency,
+  exit strategy, concentration risk. Designs/reviews architectures, builds
+  migration plans, defines HA/DR tooling, models cost, maps regulatory
+  obligations.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
   domain: "financial services, market-data and fintech cloud architecture and platform enablement"
 ---
 
@@ -55,6 +55,8 @@ numbers; the body below is orientation only.
 | PCI DSS, cardholder data scope, tokenization, HSM/key custody for payments | `references/12-pci-dss.md` |
 | Open Finance / Open Banking, FAPI, consent, directory of participants | `references/13-open-finance-open-banking.md` |
 | Banking as a Service, embedded finance, core banking ledger, multi-tenancy | `references/14-banking-as-a-service.md` |
+| Data centre exit, large-scale data migration (online/offline), TCO versus cloud, repatriation, physical capacity planning | `references/15-datacenter-lifecycle.md` |
+| Migration strategy (the 6 Rs), wave planning, Outposts/Local Zones/distributed cloud beyond the low-latency case, DR testing and chaos engineering | `references/16-migration-strategy.md` |
 
 Working code lives in `examples/` — Terraform for hybrid connectivity and for a
 GKE + Cloud Run platform baseline, an operations CLI cheat-sheet, and starter
