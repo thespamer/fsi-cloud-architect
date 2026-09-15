@@ -9,8 +9,9 @@ Say plainly when a design is sound. Do not manufacture findings.
 **Sections:** A requirements · B connectivity · C DNS and identity · D latency and
 market data · E security and compliance · F GenAI · G resilience and DR ·
 H operations and cost · I enablement · J M&A integration · L PCI DSS ·
-M Open Finance/Open Banking · N Banking as a Service · O documentation.
-Skip F, J, L, M and N when they do not apply; work the rest every time.
+M Open Finance/Open Banking · N Banking as a Service · O documentation ·
+P data centre migration and exit.
+Skip F, J, L, M, N and P when they do not apply; work the rest every time.
 
 ---
 
@@ -391,6 +392,33 @@ calls, or tenant isolation is enforced only in application code.
 
 **Observation if:** the design is sound but undocumented. It will be re-litigated
 in six months by people who were not in the room.
+
+---
+
+## P. Data Centre Migration and Exit
+
+- [ ] Migration method (online, offline appliance, or hybrid) is chosen with
+      the arithmetic shown, not assumed
+- [ ] There is a continuous delta-sync plan for any data set with an active
+      write path — not a single-pass cutover
+- [ ] The migration's network impact is sized against existing hybrid circuit
+      capacity and scheduled to avoid contention with production traffic
+- [ ] The 6-R classification is stated per application with evidence
+      (utilisation, criticality, technical debt), not asserted
+- [ ] "Retire" has been seriously evaluated using actual usage data
+- [ ] Dependencies are mapped and sequenced before their dependents move
+- [ ] A tested rollback path exists for the wave, with a stated time budget
+- [ ] TCO model includes facility and staffing allocation on the data centre
+      side, and committed-use (not on-demand) pricing on the cloud side, over
+      a consistent horizon
+- [ ] For any Outposts/Local Zones/distributed-cloud/bare-metal proposal: the
+      driver (latency, residency, or hardware dependency) is named explicitly
+- [ ] Data centre exit runbook exists with an owner per step, including
+      certified data destruction and licence reconciliation
+
+**Skip when:** no physical data centre or colocation footprint, current or
+former, is in scope. **Blocker if:** regulated data is on media pending
+disposal with no certified destruction plan.
 
 ---
 
