@@ -79,6 +79,21 @@ load balancer as next hop, and hybrid subnets. Verify GA status per
 a raw peering mesh does not. Designs that assume "A peers B, B peers C, therefore
 A reaches C" are broken.
 
+**Shared VPC administration.** The IAM role that creates a host project and
+attaches service projects is `roles/compute.xpnAdmin` (Shared VPC Admin),
+granted at the organisation or folder level — not inside any one project.
+Service-project admins can deploy workloads into the shared subnets but cannot
+modify the host project's network, firewall or routing; this is how Shared VPC
+keeps administration centralised while still letting business units self-serve
+compute. Sharing has two modes: **share all subnets** (every host-project
+subnet visible to every attached service project) or **share some subnets**
+(specific subnets attached to specific service projects) — default to the
+latter between business units or tenants that should not see each other's
+address space. **Hybrid connectivity terminates in the host project only** —
+Cloud Router, Interconnect attachments and HA VPN gateways cannot be created
+in a service project. A design that assumes otherwise fails at deploy time,
+not at review time.
+
 ---
 
 ## 3. AWS Transit Building Blocks
@@ -196,6 +211,22 @@ Identity / Workspace or the corporate IdP → AWS IAM Identity Center and GCP
 via SAML/OIDC. Permission sets and role bindings mapped from the same group
 model, so joiner/mover/leaver is one process.
 
+**Human access to internal applications: zero trust, not VPN.** The
+federation above answers who a human is; it doesn't answer how they reach an
+internal app. On GCP, **BeyondCorp Enterprise** replaces perimeter VPN with
+context-aware access — every request evaluated on identity, device posture
+(OS version, encryption status, patch level, via Endpoint Verification) and
+network context, not on being inside the corporate network. **Identity-Aware
+Proxy (IAP)** is the enforcement point: a reverse proxy in front of HTTP(S)
+workloads (GKE, Compute Engine, on-prem over HTTPS) that authenticates and
+authorises every request individually — `roles/iap.httpsResourceAccessor`
+plus Access Context Manager, not a network ACL. AWS has no direct product
+equivalent; evaluate Verified Access against the same context-aware-access
+criteria rather than assuming feature parity. **Prerequisite:** BeyondCorp
+needs Cloud Identity (or a federated IdP) plus device enrolment — an estate
+without centralised device management will stall on adoption, not on the
+network design.
+
 **Rules:**
 - Service account key files and IAM access keys are findings, not options.
 - Scope trust policies by subject, audience *and* condition — a pool that trusts
@@ -278,3 +309,5 @@ framed the same way, not two unrelated products to learn from scratch.
 | Copying market data across clouds "because it's easier" | Exchange redistribution licensing exposure plus egress cost |
 | Standing up a PSC/PrivateLink endpoint per service past a few dozen | Operational overhead that argues for a hub topology instead (`02-private-connectivity.md` §10) |
 | Attaching a customer's or partner's VPC as a full spoke on your transit hub to expose "the network" | Grants transitivity to **every other spoke already on that hub** — every VPC and on-prem site behind it — not just the one connection the relationship needs. The M&A playbook states the general form: "two estates fully routed to each other doubles the blast radius" (`11-ma-cloud-integration.md` §4). Scope with a dedicated edge VPC/project as the spoke, custom route export filtering, and hierarchical firewall policy — or reach for PSC (§10 above) if the actual need is "consume one service," not "join the networks" |
+| Designing Interconnect, HA VPN or a Cloud Router into a Shared VPC service project | Not a supported placement — hybrid connectivity attaches only in the host project (§2). Caught at `terraform apply`, not at design review, if nobody checked first |
+| Defaulting Shared VPC to "share all subnets" across every attached service project | Every service project's workloads gain reachability to every other tenant's subnet, including ones outside their business unit — collapses the isolation the host/service split exists to provide (§2) |
