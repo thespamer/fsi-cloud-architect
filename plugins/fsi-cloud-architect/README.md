@@ -1,7 +1,7 @@
 # FSI Cloud Architect
 
 Principal-level cloud architecture and platform enablement for financial
-services, market-data vendors and fintechs — a Bloomberg or a FactSet, a bank,
+services, market-data vendors and fintechs — a Bloomberg or similar, a bank,
 a payments/BaaS platform — on **Google Cloud (primary) and AWS**, with
 on-premises and colocation in the picture.
 
