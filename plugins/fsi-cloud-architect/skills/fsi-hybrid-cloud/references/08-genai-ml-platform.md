@@ -60,6 +60,42 @@ point: build the platform so models are replaceable.
 
 ---
 
+## 2a. Multi-Agent Architecture — MCP and A2A
+
+"GenAI enablement" increasingly means agent systems, not single-model
+endpoints. Two open protocols define how agents connect to tools and to each
+other — pick the wrong one and the architecture either can't scale past a
+monolith or reinvents a delegation protocol badly.
+
+| Protocol | Shape | Use when |
+| --- | --- | --- |
+| **MCP (Model Context Protocol)** | Stateless request-response — a discoverable tool catalog in front of a database, API or filesystem | The operation is atomic and deterministic: query a database, call an API, execute a function. No judgement required |
+| **A2A (Agent2Agent)** | Stateful, multi-turn delegation between independent agents, each publishing an Agent Card at `/.well-known/agent-card.json` | The task needs another system to reason, ask clarifying questions and adapt — delegating a goal, not calling a function |
+
+**MCP in practice.** Google publishes managed remote MCP servers for core
+services (BigQuery, Maps, GKE) and an MCP Toolbox for Databases (PostgreSQL,
+MySQL, BigQuery, Firestore) — deploy the toolbox and configure connections
+rather than hand-writing a database access layer per agent. The payoff is
+decoupling: a schema change updates the MCP server, not every agent that
+calls it.
+
+**A2A in practice.** An agent exposed via A2A runs as an independent
+microservice — its own infrastructure, security boundary and deployment
+lifecycle, discoverable through its Agent Card. A consuming agent treats a
+remote A2A agent like a local subagent; the delegation and multi-turn
+reasoning happen over the network but look local to the caller. This is the
+pattern for cross-team agent boundaries in an FSI estate — for example, a
+customer-support coordinator delegating a billing dispute to a finance team's
+billing agent without direct access to the finance team's systems or data.
+
+**Decision rule:** stateless and deterministic given the inputs → it's a
+tool, expose it over MCP. Needs multi-turn judgement or delegates an entire
+goal → it's a peer, expose it over A2A. Building a stateful "conversational"
+wrapper around what is actually a database lookup is the most common mistake
+here.
+
+---
+
 ## 3. Private Inference — The FSI Non-Negotiable
 
 Public inference endpoints are rarely acceptable for a financial data firm.
@@ -101,6 +137,42 @@ Know these before promising a perimeter:
 and the access-level model *as part of the AI platform*, not as a later fix. The
 platform team owning those is what makes the perimeter tolerable for the data
 scientists.
+
+---
+
+## 3a. Runtime Content Filtering — Model Armor and the Agent Security Framework
+
+Private connectivity (§3) controls *where* inference traffic goes. It does not
+control *what* the model is allowed to generate or accept. Google's security
+framework for AI agents names three principles the platform — not each
+application team — must provide:
+
+| Principle | What it enforces | Infrastructure it needs |
+| --- | --- | --- |
+| **Human controllers** | Agents don't act autonomously in critical situations without clear oversight | Distinct agent identities, user consent mechanisms, secure inputs |
+| **Limited powers** | Agents hold only the privileges their task needs, and cannot self-escalate | Scoped credential management, sandboxing, authentication/authorization/accounting for agents |
+| **Observable actions** | Every input, reasoning step, action and output is logged | Centralised logging, characterised action APIs |
+
+**Model Armor** is the runtime control for "limited powers" specifically: a
+content filter sitting in the inference pipeline, screening both prompts and
+responses. It blocks prompt injection, prevents PII/confidential-data leakage
+in responses, enforces safety policy, and flags malicious URLs. Deploy in
+**Inspect Only** mode first to baseline false-positive rates against real
+traffic, then move to **Inspect and Block** with thresholds tuned per use
+case — an FSI application handling legitimate financial discussion needs a
+higher confidence threshold than a consumer-facing filter, or genuine queries
+get blocked. Configure Sensitive Data Protection infoTypes for what the
+business actually handles (card numbers, SSNs, account numbers), not the
+product default list. Set baseline thresholds at the organisation level so
+individual application teams cannot weaken them — the same hierarchical
+guardrail pattern as `04-security-compliance-fsi.md` §5.
+
+**Cost consequence of agentic architecture** (extends §7 below): indirect
+cost from cascading tool calls and multi-agent delegation frequently exceeds
+direct token cost. An agent that checks a device, searches a calendar and
+queries a database for one user request can trigger a dozen downstream
+calls — model the full call graph, not just the top-level model invocation,
+when estimating unit economics.
 
 ---
 
@@ -238,3 +310,5 @@ cost per document indexed. Absolute AI spend is not a number anyone can act on.
 | Prompts stored in application code, unversioned | No reproducibility; fails model risk management |
 | Model governance as a team-by-team checklist | Inconsistent, unevidenced, discovered at audit |
 | Choosing the model before the data boundary | The boundary usually eliminates most of the options anyway |
+| Wrapping a stateless tool call in a stateful conversational agent | Unnecessary complexity and latency; MCP exists for exactly this case |
+| Production inference path with no content filter on input or output | Prompt injection and PII leakage are runtime risks, not just perimeter risks — VPC-SC does not catch what a valid, in-perimeter caller sends or receives |

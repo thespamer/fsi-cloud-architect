@@ -172,6 +172,22 @@ audited.
 - Define retention per log type against the specific rule that requires it, and
   record the mapping
 
+**SIEM and retrospective threat hunting.** The dedicated logging destination
+above is where evidence lives; a SIEM is what makes it searchable at the
+scale an incident actually needs. On GCP, **Chronicle** is the named
+product — petabyte-scale ingestion, retention measured in months to years by
+default (well past the 30–90 day window most log stores default to),
+UDM-normalised correlation across VPC Flow Logs, Cloud Audit Logs and
+endpoint telemetry, and native IOC matching against threat feeds
+(CSV/STIX/TAXII). On AWS, the composed equivalent is Security Hub plus
+GuardDuty plus a retained CloudTrail/Flow Logs export — there is no single
+Chronicle-equivalent product; document the composition as one control, the
+same pattern used for AWS's composed VPC Service Controls equivalent in §4.
+Forward both clouds' logs into one SIEM, or a correlated pair, rather than
+leaving each cloud's security team searching its own console — a
+lateral-movement investigation that starts in one cloud and ends in the
+other needs one place to pivot.
+
 ---
 
 ## 8. Resilience and Exit (DORA and Reg SCI)
